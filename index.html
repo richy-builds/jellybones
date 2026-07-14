@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jellybones — spike 001</title>
+<style>
+  :root {
+    --ink: #171129;
+    --ink-raise: #211a38;
+    --milk: #f3ebd3;
+    --dim: #8f84b5;
+    --glow: rgba(127, 211, 72, 0.16);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--ink);
+    color: var(--milk);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    display: grid;
+    place-items: center;
+  }
+  main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 40px 24px;
+    text-align: center;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+  }
+  .stage {
+    position: relative;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 16px;
+  }
+  .stage:focus-visible {
+    outline: 2px solid var(--dim);
+    outline-offset: 4px;
+  }
+  .stage::before {
+    content: "";
+    position: absolute;
+    inset: -10%;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, var(--glow), transparent 70%);
+    transition: background 0.4s;
+    pointer-events: none;
+  }
+  canvas {
+    display: block;
+    position: relative;
+    width: 336px;
+    max-width: 78vw;
+    image-rendering: pixelated;
+  }
+  .caption { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+  .flavors { display: flex; gap: 14px; }
+  .flavor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    color: var(--dim);
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  .flavor .cube {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    box-shadow: inset -3px -4px 0 rgba(0, 0, 0, 0.28), inset 2px 3px 0 rgba(255, 255, 255, 0.32);
+    transition: transform 0.15s;
+  }
+  .flavor:hover .cube { transform: scale(1.18) rotate(-6deg); }
+  .flavor[aria-pressed="true"] { color: var(--milk); }
+  .flavor[aria-pressed="true"] .cube { outline: 2px solid var(--milk); outline-offset: 3px; }
+  .flavor:focus-visible { outline: 2px solid var(--dim); }
+  footer { font-size: 10px; color: var(--dim); opacity: 0.7; letter-spacing: 0.15em; }
+</style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">spike 001 · proof of charm</div>
+  <h1>jellybones</h1>
+  <button class="stage" id="stage" aria-label="poke the jelly">
+    <canvas id="pet" width="336" height="336"></canvas>
+  </button>
+  <div class="caption">click the jelly · press 1 2 3 to change flavor</div>
+  <div class="flavors" id="flavors" role="group" aria-label="flavor"></div>
+  <footer>24×24 px · 12 fps · no sprites, all math</footer>
+</main>
+
+<script>
+"use strict";
+
+const GRID = 24, SCALE = 14, CX = 11.5, GROUND = 20, BASE_H = 13, BASE_RX = 7.5, FPS = 12;
+
+const FLAVORS = {
+  lime:       { B: "#7fd348", O: "#35771f", L: "#a6e87d", S: "#e9ffd2", glow: "rgba(127,211,72,.16)" },
+  strawberry: { B: "#f25d7e", O: "#99284d", L: "#f78ba4", S: "#ffdce6", glow: "rgba(242,93,126,.16)" },
+  blueberry:  { B: "#5c6ce8", O: "#2c3494", L: "#8b97f2", S: "#d6dbff", glow: "rgba(92,108,232,.18)" },
+};
+const COMMON = { N: "#f6eedc", E: "#221a38", M: "#221a38", C: "#ee86ae", H: "#0d0a1c" };
+
+function shapeHW(u) {
+  // Circular dome over the top 70%, straight sides down to the base.
+  const d = 0.7;
+  if (u >= d) return 1;
+  const q = (d - u) / d;
+  return Math.sqrt(Math.max(0, 1 - q * q));
+}
+
+// Pure frame renderer: squash s, jump lift (px), blink, mouth open → grid of palette keys.
+function renderGrid(s, lift, blink, mouthOpen) {
+  const h = BASE_H * s;
+  const rx = BASE_RX / Math.sqrt(s);
+  const base = GROUND - lift;
+  const topY = base - h;
+
+  const inside = (x, y) => {
+    if (y > base) return false;
+    const u = (y + 0.5 - topY) / h;
+    return u > 0 && Math.abs(x - CX) <= rx * shapeHW(u);
+  };
+
+  const g = Array.from({ length: GRID }, () => Array(GRID).fill("."));
+  for (let y = 0; y < GRID; y++)
+    for (let x = 0; x < GRID; x++) if (inside(x, y)) g[y][x] = "B";
+
+  const NB = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+  for (let y = 0; y < GRID; y++)
+    for (let x = 0; x < GRID; x++) {
+      if (g[y][x] !== "B") continue;
+      if (NB.some(([dx, dy]) => (g[y + dy]?.[x + dx] ?? ".") === ".")) g[y][x] = "O";
+    }
+
+  // Inner light region: 2 erosions in from the outline.
+  const erode = (from, to) => {
+    for (let y = 0; y < GRID; y++)
+      for (let x = 0; x < GRID; x++) {
+        if (g[y][x] !== from) continue;
+        if (NB.every(([dx, dy]) => ["B", "L", from, to].includes(g[y + dy]?.[x + dx] ?? ".")))
+          g[y][x] = to;
+      }
+  };
+  erode("B", "b");
+  erode("b", "L");
+  for (let y = 0; y < GRID; y++)
+    for (let x = 0; x < GRID; x++) if (g[y][x] === "b") g[y][x] = "B";
+
+  const put = (x, y, c) => {
+    if (g[y]?.[x] === "B" || g[y]?.[x] === "L") g[y][x] = c;
+  };
+
+  // The bone travels with the body, low and clear of the face.
+  const boneMid = base - 3;
+  [8, 9, 14, 15].forEach((bx) => { put(bx, boneMid - 1, "N"); put(bx, boneMid + 1, "N"); });
+  for (let x = 8; x <= 15; x++) put(x, boneMid, "N");
+
+  // Face rides the surface and scales with the squash.
+  const eyeY = Math.round(topY + h * 0.3);
+  [[8, 9], [14, 15]].forEach(([a, b]) => {
+    put(a, eyeY, "E"); put(b, eyeY, "E");
+    if (!blink) { put(a, eyeY - 1, "E"); put(b, eyeY - 1, "E"); }
+  });
+  put(11, eyeY + 2, "M"); put(12, eyeY + 2, "M");
+  if (mouthOpen) { put(11, eyeY + 3, "M"); put(12, eyeY + 3, "M"); }
+  put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C");
+
+  // Glass highlight hugging the upper-left curve.
+  put(9, Math.round(topY) + 2, "S");
+  put(8, Math.round(topY) + 3, "S");
+  put(8, Math.round(topY) + 4, "S");
+
+  // Ground shadow: wider on squash, smaller when airborne.
+  let shHW = rx * (0.95 + (1 - s) * 2.5) - lift * 0.9;
+  shHW = Math.max(2, Math.round(shHW));
+  for (let x = Math.round(CX - shHW); x <= Math.round(CX + shHW); x++)
+    if ((g[GROUND + 1][x] ?? "x") === ".") g[GROUND + 1][x] = "H";
+
+  return g;
+}
+
+const canvas = document.getElementById("pet");
+canvas.width = GRID * SCALE;
+canvas.height = GRID * SCALE;
+const ctx = canvas.getContext("2d");
+
+let flavor = "lime";
+
+function draw(g) {
+  const pal = { ...COMMON, ...FLAVORS[flavor] };
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < GRID; y++)
+    for (let x = 0; x < GRID; x++) {
+      const c = pal[g[y][x]];
+      if (c) { ctx.fillStyle = c; ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE); }
+    }
+}
+
+// Boing: [squash, lift, mouthOpen] per tick — anticipate, jump, land, settle.
+const BOING = [
+  [0.84, 0, 0], [0.84, 0, 0],
+  [1.16, 1, 1], [1.22, 3, 1], [1.18, 4, 1], [1.12, 3, 1], [1.05, 1, 1],
+  [0.82, 0, 0], [0.92, 0, 0], [1.06, 0, 0], [0.97, 0, 0],
+];
+
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let boingAt = -Infinity;
+let nextBlink = FPS * 3;
+let blinkUntil = -1;
+let lastTick = -1;
+
+function frame(now) {
+  const tick = Math.floor((now / 1000) * FPS);
+  if (tick !== lastTick) {
+    lastTick = tick;
+    if (tick >= nextBlink) {
+      blinkUntil = tick + 2;
+      nextBlink = tick + Math.round(FPS * (2.5 + Math.random() * 3));
+    }
+    const blink = tick < blinkUntil;
+    const bi = tick - boingAt;
+    if (bi >= 0 && bi < BOING.length) {
+      const [s, lift, mo] = BOING[bi];
+      draw(renderGrid(s, lift, blink, !!mo));
+    } else if (reducedMotion) {
+      draw(renderGrid(1, 0, blink, false));
+    } else {
+      const s = 1 + 0.055 * Math.sin((2 * Math.PI * tick) / (FPS * 1.4));
+      draw(renderGrid(s, 0, blink, false));
+    }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function boing() {
+  if (lastTick - boingAt >= BOING.length) boingAt = lastTick + 1;
+}
+document.getElementById("stage").addEventListener("click", boing);
+
+// Flavor swatches + 1/2/3 keys.
+const flavorsEl = document.getElementById("flavors");
+Object.entries(FLAVORS).forEach(([name, f], i) => {
+  const b = document.createElement("button");
+  b.className = "flavor";
+  b.setAttribute("aria-pressed", String(name === flavor));
+  b.innerHTML = `<span class="cube" style="background:${f.B}"></span>${i + 1} · ${name}`;
+  b.addEventListener("click", () => setFlavor(name));
+  flavorsEl.appendChild(b);
+});
+
+function setFlavor(name) {
+  flavor = name;
+  document.documentElement.style.setProperty("--glow", FLAVORS[name].glow);
+  document.querySelectorAll(".flavor").forEach((b, i) => {
+    b.setAttribute("aria-pressed", String(Object.keys(FLAVORS)[i] === name));
+  });
+  lastTick = -1; // repaint on next frame
+}
+
+addEventListener("keydown", (e) => {
+  const names = Object.keys(FLAVORS);
+  if (e.key >= "1" && e.key <= String(names.length)) setFlavor(names[e.key - 1]);
+});
+</script>
+</body>
+</html>
