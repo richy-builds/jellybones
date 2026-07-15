@@ -113,4 +113,6 @@ client-side GIF export · deploy to Vercel.
 - [x] URL state spike — `?p=flavor-mode` synced live + copy-link button; headless-Chrome verified
 - [x] OG link previews — per-pet HTML meta (`api/pet-page.mjs`) + animated GIF endpoint
       (`api/pet-gif.mjs`), `/p/*` rewrite in `vercel.json`; mock-tested in Node
-- [ ] Deploy to jellybones.vercel.app; paste a `/p/...` link into Slack to verify the unfurl
+- [x] Deployed to https://jellybones.vercel.app (2026-07-15) — root, `/p/<slug>` meta, and
+      `/api/pet-gif` all verified live via curl
+- [ ] Paste a `/p/...` link into Slack/iMessage to verify the unfurl renders the pet
