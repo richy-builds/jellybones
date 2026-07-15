@@ -20,8 +20,10 @@ function shapeHW(u) {
   return Math.sqrt(Math.max(0, 1 - q * q));
 }
 
-// Pure frame renderer: squash, lift, face state, and optional sleep progress → palette-key grid.
-export function renderGrid(s, lift, blink, mouthOpen, sleepProgress = null) {
+// Pure frame renderer: squash, lift, and frame options → palette-key grid.
+// opts: { blink, mouthOpen, sleepProgress, face }
+export function renderGrid(s, lift, opts = {}) {
+  const { blink = false, mouthOpen = false, sleepProgress = null, face = "happy" } = opts;
   const h = BASE_H * s;
   const rx = BASE_RX / Math.sqrt(s);
   const base = GROUND - lift;
@@ -67,15 +69,32 @@ export function renderGrid(s, lift, blink, mouthOpen, sleepProgress = null) {
   [8, 9, 14, 15].forEach((bx) => { put(bx, boneMid - 1, "N"); put(bx, boneMid + 1, "N"); });
   for (let x = 8; x <= 15; x++) put(x, boneMid, "N");
 
-  // Face rides the surface and scales with the squash.
+  // Face rides the surface and scales with the squash. Expressions are
+  // hand-placed pixel variants; a blink (or sleep) closes any open eye.
   const eyeY = Math.round(topY + h * 0.3);
-  [[8, 9], [14, 15]].forEach(([a, b]) => {
+  const eye = ([a, b], open) => {
     put(a, eyeY, "E"); put(b, eyeY, "E");
-    if (!blink) { put(a, eyeY - 1, "E"); put(b, eyeY - 1, "E"); }
-  });
+    if (open) { put(a, eyeY - 1, "E"); put(b, eyeY - 1, "E"); }
+  };
+  const heart = (left) => {
+    [[0, 0], [2, 0], [0, 1], [1, 1], [2, 1], [1, 2]]
+      .forEach(([dx, dy]) => put(left + dx, eyeY - 1 + dy, "C"));
+  };
+  if (face === "love" && !blink) {
+    heart(7); heart(14);
+  } else if (face === "wink") {
+    eye([8, 9], !blink); eye([14, 15], false);
+  } else {
+    eye([8, 9], !blink); eye([14, 15], !blink);
+    if (face === "grump" && !blink) { put(9, eyeY - 2, "E"); put(14, eyeY - 2, "E"); }
+  }
   put(11, eyeY + 2, "M"); put(12, eyeY + 2, "M");
-  if (mouthOpen) { put(11, eyeY + 3, "M"); put(12, eyeY + 3, "M"); }
-  put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C");
+  if (mouthOpen || face === "ooh") {
+    put(11, eyeY + 3, "M"); put(12, eyeY + 3, "M");
+  } else if (face === "grump") {
+    put(10, eyeY + 3, "M"); put(13, eyeY + 3, "M"); // corners drop: a frown
+  }
+  if (face !== "love") { put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C"); }
 
   // A tiny Z drifts up beside the sleeping jelly, then loops back to its cheek.
   if (sleepProgress !== null && sleepProgress < 0.82) {
@@ -220,39 +239,104 @@ export function makeGif(grids, flavorName, { scale = 8, background = null } = {}
   return new Uint8Array(bytes);
 }
 
+// Boing schedule: [squash, lift, mouthOpen] per tick — anticipate, jump,
+// land, settle. Shared by the live click-to-boing and the boing loop.
+export const BOING = [
+  [0.84, 0, 0], [0.84, 0, 0],
+  [1.16, 1, 1], [1.22, 3, 1], [1.18, 4, 1], [1.12, 3, 1], [1.05, 1, 1],
+  [0.82, 0, 0], [0.92, 0, 0], [1.06, 0, 0], [0.97, 0, 0],
+];
+// The loop closes the seam with rest ticks: settle ends at 0.97, rest sits at
+// 1.0, and the next pass opens on the 0.84 anticipation squash.
+const BOING_REST = 5;
+export const BOING_LOOP = [...BOING, ...Array.from({ length: BOING_REST }, () => [1, 0, 0])];
+
 // Deterministic loop schedules per animation mode. Live-only flourishes
 // (random blinks) are omitted so the seam always closes cleanly.
 export const IDLE_FRAMES = 17;
 export const SLEEP_FRAMES = FPS * 4;
 
-export function modeGrids(mode) {
+export function modeGrids(mode, face = "happy") {
   if (mode === "sleep") {
     return Array.from({ length: SLEEP_FRAMES }, (_, frame) => {
       const progress = frame / SLEEP_FRAMES;
-      return renderGrid(1 + 0.04 * Math.sin(2 * Math.PI * progress), 0, true, false, progress);
+      return renderGrid(1 + 0.04 * Math.sin(2 * Math.PI * progress), 0,
+        { blink: true, sleepProgress: progress, face });
     });
   }
+  if (mode === "boing") {
+    return BOING_LOOP.map(([s, lift, mo]) =>
+      renderGrid(s, lift, { mouthOpen: !!mo, face }));
+  }
   return Array.from({ length: IDLE_FRAMES }, (_, frame) =>
-    renderGrid(1 + 0.055 * Math.sin((2 * Math.PI * frame) / IDLE_FRAMES), 0, false, false));
+    renderGrid(1 + 0.055 * Math.sin((2 * Math.PI * frame) / IDLE_FRAMES), 0, { face }));
 }
 
 // Slug codec. Tokens are order-insensitive and unknown tokens are ignored, so
 // links never break as parts are added — a bad link degrades to the default pet.
-export const MODES = ["idle", "sleep"];
-export const DEFAULT_PET = { flavor: "lime", mode: "idle" };
+export const MODES = ["idle", "boing", "sleep"];
+export const FACES = ["happy", "wink", "ooh", "grump", "love"];
+export const DEFAULT_PET = { flavor: "lime", mode: "idle", face: "happy" };
 
 export function parseSlug(slug) {
   const pet = { ...DEFAULT_PET };
   for (const token of String(slug ?? "").toLowerCase().split("-")) {
     if (FLAVORS[token]) pet.flavor = token;
     else if (MODES.includes(token)) pet.mode = token;
+    else if (FACES.includes(token)) pet.face = token;
   }
   return pet;
 }
 
-export function stateSlug(flavor, mode) {
+export function stateSlug(flavor, mode, face = DEFAULT_PET.face) {
   const tokens = [];
   if (flavor !== DEFAULT_PET.flavor) tokens.push(flavor);
+  if (face !== DEFAULT_PET.face) tokens.push(face);
   if (mode !== DEFAULT_PET.mode) tokens.push(mode);
   return tokens.join("-");
+}
+
+// Store-only ZIP writer for the emoji pack. GIF payloads are already
+// LZW-compressed, so storing them keeps the container dependency-free
+// without a meaningful size cost.
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (const byte of bytes) c = CRC_TABLE[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+export function makeZip(files) {
+  const bytes = [];
+  const word = (v) => bytes.push(v & 0xff, (v >> 8) & 0xff);
+  const dword = (v) => bytes.push(v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, (v >>> 24) & 0xff);
+  const entries = [];
+
+  for (const { name, data } of files) {
+    const nameBytes = [...name].map((char) => char.charCodeAt(0));
+    const crc = crc32(data);
+    entries.push({ nameBytes, crc, size: data.length, offset: bytes.length });
+    dword(0x04034b50); word(20); word(0); word(0); word(0); word(0);
+    dword(crc); dword(data.length); dword(data.length);
+    word(nameBytes.length); word(0);
+    bytes.push(...nameBytes, ...data);
+  }
+
+  const dirStart = bytes.length;
+  for (const { nameBytes, crc, size, offset } of entries) {
+    dword(0x02014b50); word(20); word(20); word(0); word(0); word(0); word(0);
+    dword(crc); dword(size); dword(size);
+    word(nameBytes.length); word(0); word(0); word(0); word(0);
+    dword(0); dword(offset);
+    bytes.push(...nameBytes);
+  }
+  const dirSize = bytes.length - dirStart;
+  dword(0x06054b50); word(0); word(0); word(entries.length); word(entries.length);
+  dword(dirSize); dword(dirStart); word(0);
+  return new Uint8Array(bytes);
 }

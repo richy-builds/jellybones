@@ -88,12 +88,15 @@
   .caption { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
   .animations {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 6px;
     padding: 4px;
     border: 1px solid var(--dim-border);
     border-radius: 10px;
     background: var(--ink-panel);
   }
+  .faces .animation { min-width: 0; }
   .animation {
     min-width: 76px;
     min-height: 44px;
@@ -176,7 +179,7 @@
 </head>
 <body>
 <main>
-  <div class="eyebrow">spike 001 · proof of charm</div>
+  <div class="eyebrow">pixel pet maker</div>
   <h1>jellybones</h1>
   <button class="stage" id="stage" aria-label="poke the jelly">
     <canvas id="pet" width="336" height="336"></canvas>
@@ -184,20 +187,24 @@
   <div class="caption" id="caption">click the jelly · press 1 2 3 to change flavor</div>
   <div class="animations" id="animations" role="group" aria-label="animation">
     <button class="animation" type="button" data-mode="idle" aria-pressed="true">idle</button>
+    <button class="animation" type="button" data-mode="boing" aria-pressed="false">boing</button>
     <button class="animation" type="button" data-mode="sleep" aria-pressed="false">sleep</button>
   </div>
+  <div class="animations faces" id="faces" role="group" aria-label="expression"></div>
   <div class="flavors" id="flavors" role="group" aria-label="flavor"></div>
   <div class="actions">
     <button class="export" id="export" type="button">export idle gif</button>
+    <button class="export" id="pack" type="button">emoji pack</button>
     <button class="export" id="share" type="button">copy link</button>
   </div>
   <div class="export-status" id="export-status" role="status" aria-live="polite"></div>
-  <footer>24×24 px · 12 fps · no sprites, all math</footer>
+  <footer>24×24 px · 12 fps · all math</footer>
 </main>
 
 <script type="module">
 import {
-  COMMON, FLAVORS, GRID, FPS, IDLE_FRAMES, makeGif, modeGrids, parseSlug, renderGrid, stateSlug,
+  BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS,
+  makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
 } from "/jelly-core.mjs";
 
 const SCALE = 14;
@@ -208,6 +215,7 @@ canvas.height = GRID * SCALE;
 const ctx = canvas.getContext("2d");
 
 let flavor = "lime";
+let face = "happy";
 
 function draw(g) {
   const pal = { ...COMMON, ...FLAVORS[flavor] };
@@ -218,13 +226,6 @@ function draw(g) {
       if (c) { ctx.fillStyle = c; ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE); }
     }
 }
-
-// Boing: [squash, lift, mouthOpen] per tick — anticipate, jump, land, settle.
-const BOING = [
-  [0.84, 0, 0], [0.84, 0, 0],
-  [1.16, 1, 1], [1.22, 3, 1], [1.18, 4, 1], [1.12, 3, 1], [1.05, 1, 1],
-  [0.82, 0, 0], [0.92, 0, 0], [1.06, 0, 0], [0.97, 0, 0],
-];
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const SLEEP_TICKS = FPS * 4;
@@ -244,20 +245,21 @@ function frame(now) {
       nextBlink = tick + Math.round(FPS * (2.5 + Math.random() * 3));
     }
     const blink = tick < blinkUntil;
-    const bi = tick - boingAt;
     if (mode === "sleep") {
       const sleepTick = Math.max(0, tick - modeAt) % SLEEP_TICKS;
       const sleepProgress = sleepTick / SLEEP_TICKS;
       const s = reducedMotion ? 1 : 1 + 0.04 * Math.sin(2 * Math.PI * sleepProgress);
-      draw(renderGrid(s, 0, true, false, reducedMotion ? 0.25 : sleepProgress));
-    } else if (bi >= 0 && bi < BOING.length) {
-      const [s, lift, mo] = BOING[bi];
-      draw(renderGrid(s, lift, blink, !!mo));
-    } else if (reducedMotion) {
-      draw(renderGrid(1, 0, blink, false));
+      draw(renderGrid(s, 0, { blink: true, sleepProgress: reducedMotion ? 0.25 : sleepProgress, face }));
     } else {
-      const s = 1 + 0.055 * Math.sin((2 * Math.PI * tick) / (FPS * 1.4));
-      draw(renderGrid(s, 0, blink, false));
+      // Boing mode loops the shared schedule; idle plays it once per click.
+      let squash = 1, lift = 0, mouthOpen = 0;
+      const step = mode === "boing"
+        ? (reducedMotion ? null : BOING_LOOP[Math.max(0, tick - modeAt) % BOING_LOOP.length])
+        : BOING[tick - boingAt];
+      if (step) [squash, lift, mouthOpen] = step;
+      else if (!reducedMotion && mode === "idle")
+        squash = 1 + 0.055 * Math.sin((2 * Math.PI * tick) / (FPS * 1.4));
+      draw(renderGrid(squash, lift, { blink, mouthOpen: !!mouthOpen, face }));
     }
   }
   requestAnimationFrame(frame);
@@ -290,6 +292,7 @@ function setMode(nextMode) {
   caption.textContent = sleeping
     ? "click the jelly to wake it · press 1 2 3 to change flavor"
     : "click the jelly · press 1 2 3 to change flavor";
+  if (!exportButton.disabled) exportButton.textContent = `export ${mode} gif`;
   lastTick = -1;
   syncURL();
 }
@@ -297,6 +300,28 @@ function setMode(nextMode) {
 animationButtons.forEach((button) => {
   button.addEventListener("click", () => setMode(button.dataset.mode));
 });
+
+// Expression picker.
+const facesEl = document.getElementById("faces");
+FACES.forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "animation";
+  b.type = "button";
+  b.dataset.face = name;
+  b.setAttribute("aria-pressed", String(name === face));
+  b.textContent = name;
+  b.addEventListener("click", () => setFace(name));
+  facesEl.appendChild(b);
+});
+
+function setFace(name) {
+  face = name;
+  [...facesEl.children].forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.face === face));
+  });
+  lastTick = -1; // repaint on next frame
+  syncURL();
+}
 
 // Flavor swatches + 1/2/3 keys.
 const flavorsEl = document.getElementById("flavors");
@@ -321,27 +346,62 @@ function setFlavor(name) {
 
 const exportButton = document.getElementById("export");
 const exportStatus = document.getElementById("export-status");
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const petName = (forMode) =>
+  [flavor, face === "happy" ? null : face, forMode].filter(Boolean).join("-");
+
 exportButton.addEventListener("click", async () => {
   exportButton.disabled = true;
   exportButton.textContent = "making gif…";
-  exportStatus.textContent = `Building ${IDLE_FRAMES} frames…`;
+  exportStatus.textContent = "Building frames…";
   try {
     await new Promise((resolve) => requestAnimationFrame(resolve));
-    const exportedFlavor = flavor;
-    const blob = new Blob([makeGif(modeGrids("idle"), exportedFlavor)], { type: "image/gif" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `jellybones-${exportedFlavor}-idle.gif`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    exportStatus.textContent = `${exportedFlavor} jelly exported · ${Math.ceil(blob.size / 1024)} KB`;
+    const name = petName(mode);
+    const grids = modeGrids(mode, face);
+    const blob = new Blob([makeGif(grids, flavor)], { type: "image/gif" });
+    downloadBlob(blob, `jellybones-${name}.gif`);
+    exportStatus.textContent = `${name} exported · ${Math.ceil(blob.size / 1024)} KB`;
   } catch (error) {
     console.error(error);
     exportStatus.textContent = "Export failed — please try again.";
   } finally {
     exportButton.disabled = false;
-    exportButton.textContent = "export idle gif";
+    exportButton.textContent = `export ${mode} gif`;
+  }
+});
+
+// Slack emoji pack: all three animations as small GIFs (120×120 — under
+// Slack's 128 px emoji cap), zipped client-side.
+const packButton = document.getElementById("pack");
+packButton.addEventListener("click", async () => {
+  packButton.disabled = true;
+  packButton.textContent = "packing…";
+  exportStatus.textContent = "Building emoji pack…";
+  try {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const files = ["idle", "boing", "sleep"].map((m) => ({
+      name: `jelly-${petName(m)}.gif`,
+      data: makeGif(modeGrids(m, face), flavor, { scale: 5 }),
+    }));
+    const blob = new Blob([makeZip(files)], { type: "application/zip" });
+    downloadBlob(blob, `jellybones-${flavor}-emoji.zip`);
+    exportStatus.textContent =
+      `emoji pack · ${Math.ceil(blob.size / 1024)} KB · upload each gif as a Slack emoji`;
+  } catch (error) {
+    console.error(error);
+    exportStatus.textContent = "Pack failed — please try again.";
+  } finally {
+    packButton.disabled = false;
+    packButton.textContent = "emoji pack";
   }
 });
 
@@ -354,7 +414,7 @@ addEventListener("keydown", (e) => {
 // works on any static server. Slug tokens are order-insensitive and unknown tokens are
 // ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
 function syncURL() {
-  const slug = stateSlug(flavor, mode);
+  const slug = stateSlug(flavor, mode, face);
   // Canonical /p/<slug> everywhere it can unfurl: static files beat rewrites on
   // Vercel, so the ?p= form never reaches pet-page — it survives only for local
   // dev, where /p/* has no rewrite and would 404 on reload.
@@ -371,6 +431,7 @@ function syncURL() {
 function applySlug(slug) {
   const pet = parseSlug(slug);
   setFlavor(pet.flavor);
+  setFace(pet.face);
   setMode(pet.mode);
 }
 

@@ -4,9 +4,9 @@
 import { PAGE_BG, makeGif, modeGrids, parseSlug } from "../jelly-core.mjs";
 
 export default function handler(req, res) {
-  const { flavor, mode } = parseSlug(req.query.p);
+  const { flavor, mode, face } = parseSlug(req.query.p);
   const scale = Math.min(16, Math.max(2, parseInt(req.query.scale, 10) || 8));
-  const bytes = makeGif(modeGrids(mode), flavor, {
+  const bytes = makeGif(modeGrids(mode, face), flavor, {
     scale,
     background: req.query.bg === "1" ? PAGE_BG : null,
   });

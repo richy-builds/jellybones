@@ -58,6 +58,22 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
 - **2026-07-15 — Per-pet meta via marker swap.** `/p/:slug` rewrites to `api/pet-page.mjs`,
   which swaps the `<!-- pet-meta -->` block in `index.html` for pet-specific title/OG tags.
   Root `/` stays static.
+- **2026-07-15 — Boing is a mode, not just a click.** The `[squash, lift, mouthOpen]`
+  schedule moved into the core; the loop closes its seam with 5 rest ticks (settle ends at
+  0.97, rest sits at 1.0, next pass opens on the 0.84 anticipation squash). Click-to-boing
+  in idle is unchanged and shares the same schedule. Export follows the selected mode.
+- **2026-07-15 — Expressions are pixel deltas, not new art.** Five faces (happy / wink /
+  ooh / grump / love) are hand-placed pixel variants inside `renderGrid`, drawn with `put()`
+  so they clip gracefully against any squash. A blink (or sleep) closes any open eye, which
+  is what lets every face work with every animation for free. Faces are slug tokens like
+  everything else. `renderGrid`'s tail args became an options object before they hit six.
+- **2026-07-15 — Emoji pack is a hand-written store-only zip.** The GIF payloads are
+  already LZW-compressed, so storing them costs nothing and keeps the pack dependency-free
+  like the encoder. GIFs are 120×120 (scale 5) to sit under Slack's 128 px emoji size;
+  the whole three-animation pack is ~60 KB against Slack's 128 KB per-emoji cap.
+- **2026-07-15 — Copy scrubbed for the public.** "spike 001 · proof of charm" →
+  "pixel pet maker"; the footer drops "no sprites". README added with an embedded
+  live pet GIF (the transparent `/api/pet-gif` default exists for exactly this).
 - **2026-07-14 — Sleep stays subtle.** A 4-second breathing loop reuses the procedural body
   deformation at lower amplitude, with closed eyes and one drifting pixel Z. The mode becomes
   a static sleeping pose when reduced motion is requested; poking the jelly wakes it.
@@ -111,10 +127,11 @@ client-side GIF export · deploy to Vercel.
 - [x] `git init` so editor-buffer accidents can't eat work (one already happened)
 - [x] GIF export spike — 192×192 transparent loop, 17 frames / 1.42 s, ~21 KB; verified in Chrome
 - [x] Second animation cycle — 4-second breathe, closed eyes, drifting Z; verified desktop/mobile
-- [ ] Animation-aware GIF export (idle / boing / sleep) — sleep already exportable via
-      `modeGrids("sleep")`; boing needs a loop-seam design; UI button still idle-only
-- [ ] Phase 3: expressions (~5 face variants as slug tokens) + one-click Slack emoji pack
-      (store-only zip, hand-written, 128×128 GIFs)
+- [x] Animation-aware GIF export (idle / boing / sleep) — boing loop seam closed with rest
+      ticks; export button follows the selected mode (2026-07-15)
+- [x] Phase 3: expressions (5 faces as slug tokens: happy / wink / ooh / grump / love) +
+      one-click Slack emoji pack (store-only zip, hand-written, 120×120 GIFs) — 2026-07-15
+- [x] Public copy scrub + README with embedded live pet GIF (2026-07-15)
 - [x] URL state spike — `?p=flavor-mode` synced live + copy-link button; headless-Chrome verified
 - [x] OG link previews — per-pet HTML meta (`api/pet-page.mjs`) + animated GIF endpoint
       (`api/pet-gif.mjs`), `/p/*` rewrite in `vercel.json`; mock-tested in Node

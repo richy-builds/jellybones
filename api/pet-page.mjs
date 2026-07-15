@@ -7,12 +7,16 @@ import { FLAVORS, parseSlug, stateSlug } from "../jelly-core.mjs";
 const page = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const escape = (text) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
+const FACE_ADJ = { wink: "winking", ooh: "surprised", grump: "grumpy", love: "lovestruck" };
+const MODE_PHRASE = { sleep: ", sleeping", boing: ", mid-boing" };
+
 export default function handler(req, res) {
-  const { flavor, mode } = parseSlug(req.query.p);
-  const slug = stateSlug(flavor, mode);
+  const { flavor, mode, face } = parseSlug(req.query.p);
+  const slug = stateSlug(flavor, mode, face);
   const host = req.headers["x-forwarded-host"] ?? req.headers.host ?? "jellybones.vercel.app";
   const base = `https://${host}`;
-  const title = `a ${flavor} jelly${mode === "sleep" ? ", sleeping" : ""} · jellybones`;
+  const adjective = FACE_ADJ[face] ? `${FACE_ADJ[face]} ` : "";
+  const title = `a ${adjective}${flavor} jelly${MODE_PHRASE[mode] ?? ""} · jellybones`;
   const description = "Someone made you a tiny pixel pet. Poke it, remix it, export the gif.";
   const image = `${base}/api/pet-gif?p=${slug}&bg=1&scale=12`;
 
