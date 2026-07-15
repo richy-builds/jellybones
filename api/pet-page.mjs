@@ -14,7 +14,7 @@ export default function handler(req, res) {
   const base = `https://${host}`;
   const title = `a ${flavor} jelly${mode === "sleep" ? ", sleeping" : ""} · jellybones`;
   const description = "Someone made you a tiny pixel pet. Poke it, remix it, export the gif.";
-  const image = `${base}/api/pet-gif?p=${slug}&bg=1`;
+  const image = `${base}/api/pet-gif?p=${slug}&bg=1&scale=12`;
 
   const meta = [
     `<title>${escape(title)}</title>`,
@@ -24,7 +24,12 @@ export default function handler(req, res) {
     `<meta property="og:type" content="website">`,
     `<meta property="og:url" content="${base}/p/${slug}">`,
     `<meta property="og:image" content="${escape(image)}">`,
-    `<meta name="twitter:card" content="summary">`,
+    `<meta property="og:image:type" content="image/gif">`,
+    `<meta property="og:image:width" content="288">`,
+    `<meta property="og:image:height" content="288">`,
+    `<meta property="og:image:alt" content="${escape(title)}">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:image" content="${escape(image)}">`,
   ].join("\n");
 
   const html = page.replace(/<!-- pet-meta -->[\s\S]*<!-- \/pet-meta -->/, meta);
