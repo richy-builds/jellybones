@@ -260,8 +260,9 @@ export function modeGrids(mode, face = "happy") {
   if (mode === "sleep") {
     return Array.from({ length: SLEEP_FRAMES }, (_, frame) => {
       const progress = frame / SLEEP_FRAMES;
+      // Sleep is one complete pose; the saved awake expression is intentionally ignored.
       return renderGrid(1 + 0.04 * Math.sin(2 * Math.PI * progress), 0,
-        { blink: true, sleepProgress: progress, face });
+        { blink: true, sleepProgress: progress });
     });
   }
   if (mode === "boing") {
@@ -294,6 +295,20 @@ export function stateSlug(flavor, mode, face = DEFAULT_PET.face) {
   if (face !== DEFAULT_PET.face) tokens.push(face);
   if (mode !== DEFAULT_PET.mode) tokens.push(mode);
   return tokens.join("-");
+}
+
+// Gift tag: a recipient name and note ride next to the slug as ?to=/&note= query
+// params. They're free text — unlike slug tokens they need sanitizing, and the page
+// and pet-page share this cleaner so the tag the recipient sees matches the unfurl.
+// An empty `to` means "not a gift"; a note without a recipient is ignored.
+export const GIFT_MAX = { to: 24, note: 80 };
+
+export function cleanGift({ to, note } = {}) {
+  const clean = (value, max) =>
+    String(value ?? "").replace(/\p{C}/gu, " ").replace(/\s+/g, " ").trim().slice(0, max);
+  const gift = { to: clean(to, GIFT_MAX.to), note: clean(note, GIFT_MAX.note) };
+  if (!gift.to) gift.note = "";
+  return gift;
 }
 
 // Store-only ZIP writer for the emoji pack. GIF payloads are already

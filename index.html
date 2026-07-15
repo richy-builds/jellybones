@@ -41,11 +41,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: min(100vw, 600px);
-    gap: 20px;
-    padding: 40px 24px;
+    width: min(100%, 960px);
+    gap: 24px;
+    padding: 32px 24px;
     text-align: center;
   }
+  .brand { display: flex; flex-direction: column; align-items: center; gap: 12px; }
   .eyebrow {
     font-size: 11px;
     letter-spacing: 0.35em;
@@ -56,6 +57,20 @@
     font-size: 28px;
     font-weight: 700;
     letter-spacing: 0.12em;
+  }
+  .maker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: center;
+    gap: 40px;
+    width: 100%;
+  }
+  .preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
   }
   .stage {
     position: relative;
@@ -78,7 +93,7 @@
     transition: background 0.4s;
     pointer-events: none;
   }
-  canvas {
+  #pet {
     display: block;
     position: relative;
     width: 336px;
@@ -86,19 +101,150 @@
     image-rendering: pixelated;
   }
   .caption { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+  .gift-tag {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 440px;
+    /* The top ~7 grid rows of the canvas are empty air above the resting dome, but the
+       boing jump's apex (jelly-core's BOING [1.22, lift 4] frame) reaches row ~0 — the
+       very top of the canvas, with no room to spare. -28px cancels the preview gap +
+       stage padding, landing the tag flush with the canvas top; "+ 1 grid row" (canvas
+       size / 24, matching #pet) pushes it back up so it clears the boing peak at every
+       width instead of colliding with it mid-jump. */
+    margin-bottom: calc(-28px + min(336px, 78vw) / 24);
+    position: relative;
+    z-index: 1;
+  }
+  .gift-tag[hidden] { display: none; }
+  .gift-to {
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .gift-note {
+    font-size: 13px;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+    overflow-wrap: anywhere;
+  }
+  .gift-back {
+    min-height: 44px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--dim);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .gift-back:hover { color: var(--milk); }
+  .gift-back:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
+  .gift-input {
+    width: 100%;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--dim-border);
+    border-radius: 8px;
+    background: var(--ink);
+    color: var(--milk);
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+  }
+  .gift-input::placeholder { color: var(--dim); opacity: 0.8; }
+  .gift-input:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
+  .customize {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    padding: 20px;
+    border: 1px solid var(--dim-border);
+    border-radius: 16px;
+    background: var(--ink-panel);
+    text-align: left;
+    box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.18);
+  }
+  .customize-title,
+  .setting-label {
+    color: var(--dim);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .customize-title { color: var(--milk); font-size: 11px; }
+  .setting { display: flex; flex-direction: column; gap: 8px; }
+  .setting[hidden] { display: none; }
   .animations {
     display: flex;
-    flex-wrap: wrap;
+    width: 100%;
     justify-content: center;
     gap: 6px;
     padding: 4px;
-    border: 1px solid var(--dim-border);
     border-radius: 10px;
-    background: var(--ink-panel);
+    background: var(--ink);
   }
-  .faces .animation { min-width: 0; }
+  .faces {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .faces[hidden] { display: none; }
+  .face-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+    min-height: 70px;
+    gap: 3px;
+    padding: 5px 4px 6px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    font: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .face-preview {
+    width: 56px;
+    height: auto;
+    max-width: none;
+    transition: transform 0.15s steps(2, end);
+  }
+  .face-choice:hover { color: var(--milk); }
+  .face-choice:hover .face-preview { transform: translateY(-2px) scale(1.06); }
+  .face-choice[aria-pressed="true"] {
+    border-color: var(--milk);
+    background: var(--ink-panel);
+    color: var(--milk);
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
+  }
+  .face-choice[aria-pressed="true"] .face-preview { transform: translateY(-2px); }
+  .face-choice:focus-visible { outline: 2px solid var(--milk); outline-offset: 3px; }
   .animation {
-    min-width: 76px;
+    flex: 1;
+    min-width: 0;
     min-height: 44px;
     padding: 8px 14px;
     border: 0;
@@ -115,11 +261,12 @@
   .animation:hover { color: var(--milk); }
   .animation[aria-pressed="true"] { background: var(--dim); color: var(--ink); }
   .animation:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
-  .flavors { display: flex; gap: 14px; }
+  .flavors { display: flex; justify-content: space-between; gap: 8px; width: 100%; }
   .flavor {
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex: 1;
     gap: 7px;
     background: none;
     border: 0;
@@ -143,10 +290,18 @@
   .flavor[aria-pressed="true"] { color: var(--milk); }
   .flavor[aria-pressed="true"] .cube { outline: 2px solid var(--milk); outline-offset: 3px; }
   .flavor:focus-visible { outline: 2px solid var(--dim); }
-  .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-top: 18px;
+    border-top: 1px solid var(--dim-border);
+  }
+  .secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .export {
+    width: 100%;
     min-height: 44px;
-    padding: 10px 18px;
+    padding: 10px 12px;
     border: 2px solid var(--dim);
     border-radius: 8px;
     background: var(--ink-raise);
@@ -163,48 +318,104 @@
   .export:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.28); }
   .export:focus-visible { outline: 2px solid var(--milk); outline-offset: 4px; }
   .export:disabled { cursor: wait; opacity: 0.65; }
+  .export-primary {
+    background: var(--milk);
+    border-color: var(--milk);
+    color: var(--ink);
+  }
   .export-status { min-height: 1.2em; font-size: 10px; color: var(--dim); letter-spacing: 0.08em; }
-  footer { font-size: 10px; color: var(--dim); opacity: 0.7; letter-spacing: 0.15em; }
+  @media (prefers-reduced-motion: reduce) {
+    .face-preview { transition: none; }
+  }
   @media (max-height: 700px) {
     main { gap: 12px; padding-block: 20px; }
-    canvas { width: 280px; max-width: 72vw; }
+    #pet { width: 280px; max-width: 72vw; }
   }
-  @media (max-width: 420px) {
-    .caption { font-size: 10px; letter-spacing: 0.04em; }
-    .flavors { width: 100%; justify-content: center; gap: 4px; }
-    .flavor { min-width: 0; padding-inline: 4px; letter-spacing: 0.08em; }
-    footer { max-width: 100%; letter-spacing: 0.08em; }
+  @media (max-width: 799px) {
+    main { width: min(100%, 600px); gap: 20px; padding: 40px 24px; }
+    .maker { display: flex; flex-direction: column; gap: 20px; }
+    .preview, .customize { width: 100%; }
+    .gift-tag { margin-top: 14px; } /* stacked layout: detach the tag from the brand */
+  }
+  /* 460, not 420: five 56px face portraits + gaps overflow the panel below ~455px */
+  @media (max-width: 460px) {
+    main { padding-inline: 16px; }
+    .caption { font-size: 11px; letter-spacing: 0.04em; }
+    .customize { gap: 16px; padding: 16px 14px; }
+    .faces { gap: 2px; }
+    .face-choice {
+      flex: 0 0 calc((100% - 4px) / 3);
+      max-width: 88px;
+      padding-inline: 1px;
+      font-size: 9px;
+      letter-spacing: 0.04em;
+    }
+    .face-preview { width: 48px; }
+    .flavors { gap: 2px; }
+    .flavor { min-width: 0; padding-inline: 2px; font-size: 9px; letter-spacing: 0.08em; }
   }
 </style>
 </head>
 <body>
 <main>
-  <div class="eyebrow">pixel pet maker</div>
-  <h1>jellybones</h1>
-  <button class="stage" id="stage" aria-label="poke the jelly">
-    <canvas id="pet" width="336" height="336"></canvas>
-  </button>
-  <div class="caption" id="caption">click the jelly · press 1 2 3 to change flavor</div>
-  <div class="animations" id="animations" role="group" aria-label="animation">
-    <button class="animation" type="button" data-mode="idle" aria-pressed="true">idle</button>
-    <button class="animation" type="button" data-mode="boing" aria-pressed="false">boing</button>
-    <button class="animation" type="button" data-mode="sleep" aria-pressed="false">sleep</button>
+  <header class="brand">
+    <div class="eyebrow">pixel pet maker</div>
+    <h1>jellybones</h1>
+  </header>
+  <div class="maker">
+    <section class="preview" aria-label="pet preview">
+      <div class="gift-tag" id="gift-tag" hidden>
+        <div class="gift-to" id="gift-to"></div>
+        <div class="gift-note" id="gift-note"></div>
+      </div>
+      <button class="stage" id="stage" aria-label="poke the jelly">
+        <canvas id="pet" width="336" height="336"></canvas>
+      </button>
+      <div class="caption" id="caption">poke the jelly</div>
+      <button class="gift-back" id="gift-back" type="button" hidden>send one back ♥</button>
+    </section>
+    <section class="customize" aria-labelledby="customize-title">
+      <h2 class="customize-title" id="customize-title">customize</h2>
+      <div class="setting">
+        <div class="setting-label" id="flavor-label">flavor</div>
+        <div class="flavors" id="flavors" role="group" aria-labelledby="flavor-label"></div>
+      </div>
+      <div class="setting" id="face-setting">
+        <div class="setting-label" id="face-label">face</div>
+        <div class="faces" id="faces" role="group" aria-labelledby="face-label"></div>
+      </div>
+      <div class="setting">
+        <div class="setting-label" id="motion-label">motion</div>
+        <div class="animations" id="animations" role="group" aria-labelledby="motion-label">
+          <button class="animation" type="button" data-mode="idle" aria-pressed="true">wobble</button>
+          <button class="animation" type="button" data-mode="boing" aria-pressed="false">boing</button>
+          <button class="animation" type="button" data-mode="sleep" aria-pressed="false">sleep</button>
+        </div>
+      </div>
+      <div class="setting">
+        <div class="setting-label" id="gift-label">gift</div>
+        <input class="gift-input" id="gift-to-input" type="text" maxlength="24"
+          placeholder="their name" aria-label="gift recipient name"
+          autocomplete="off" spellcheck="false">
+        <input class="gift-input" id="gift-note-input" type="text" maxlength="80"
+          placeholder="a tiny note (optional)" aria-label="gift note" autocomplete="off">
+      </div>
+      <div class="actions">
+        <button class="export export-primary" id="share" type="button">share</button>
+        <div class="secondary-actions">
+          <button class="export" id="export" type="button">wobble gif</button>
+          <button class="export" id="pack" type="button">emoji pack</button>
+        </div>
+      </div>
+      <div class="export-status" id="export-status" role="status" aria-live="polite"></div>
+    </section>
   </div>
-  <div class="animations faces" id="faces" role="group" aria-label="expression"></div>
-  <div class="flavors" id="flavors" role="group" aria-label="flavor"></div>
-  <div class="actions">
-    <button class="export" id="export" type="button">export idle gif</button>
-    <button class="export" id="pack" type="button">emoji pack</button>
-    <button class="export" id="share" type="button">copy link</button>
-  </div>
-  <div class="export-status" id="export-status" role="status" aria-live="polite"></div>
-  <footer>24×24 px · 12 fps · all math</footer>
 </main>
 
 <script type="module">
 import {
   BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS,
-  makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
+  cleanGift, makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
 } from "/jelly-core.mjs";
 
 const SCALE = 14;
@@ -213,17 +424,24 @@ const canvas = document.getElementById("pet");
 canvas.width = GRID * SCALE;
 canvas.height = GRID * SCALE;
 const ctx = canvas.getContext("2d");
+const FULL_GRID = { x: 0, y: 0, width: GRID, height: GRID };
+const FACE_CROP = { x: 5, y: 6, width: 14, height: 10 };
+const FACE_SCALE = 4;
+const MODE_LABELS = { idle: "wobble", boing: "boing", sleep: "sleep" };
 
 let flavor = "lime";
 let face = "happy";
 
-function draw(g) {
+function draw(g, target = ctx, scale = SCALE, crop = FULL_GRID) {
   const pal = { ...COMMON, ...FLAVORS[flavor] };
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  for (let y = 0; y < GRID; y++)
-    for (let x = 0; x < GRID; x++) {
+  target.clearRect(0, 0, target.canvas.width, target.canvas.height);
+  for (let y = crop.y; y < crop.y + crop.height; y++)
+    for (let x = crop.x; x < crop.x + crop.width; x++) {
       const c = pal[g[y][x]];
-      if (c) { ctx.fillStyle = c; ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE); }
+      if (c) {
+        target.fillStyle = c;
+        target.fillRect((x - crop.x) * scale, (y - crop.y) * scale, scale, scale);
+      }
     }
 }
 
@@ -249,7 +467,7 @@ function frame(now) {
       const sleepTick = Math.max(0, tick - modeAt) % SLEEP_TICKS;
       const sleepProgress = sleepTick / SLEEP_TICKS;
       const s = reducedMotion ? 1 : 1 + 0.04 * Math.sin(2 * Math.PI * sleepProgress);
-      draw(renderGrid(s, 0, { blink: true, sleepProgress: reducedMotion ? 0.25 : sleepProgress, face }));
+      draw(renderGrid(s, 0, { blink: true, sleepProgress: reducedMotion ? 0.25 : sleepProgress }));
     } else {
       // Boing mode loops the shared schedule; idle plays it once per click.
       let squash = 1, lift = 0, mouthOpen = 0;
@@ -288,11 +506,10 @@ function setMode(nextMode) {
     button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
   });
   const sleeping = mode === "sleep";
+  faceSetting.hidden = sleeping;
   stage.setAttribute("aria-label", sleeping ? "wake the jelly" : "poke the jelly");
-  caption.textContent = sleeping
-    ? "click the jelly to wake it · press 1 2 3 to change flavor"
-    : "click the jelly · press 1 2 3 to change flavor";
-  if (!exportButton.disabled) exportButton.textContent = `export ${mode} gif`;
+  caption.textContent = sleeping ? "wake the jelly" : "poke the jelly";
+  if (!exportButton.disabled) exportButton.textContent = `${MODE_LABELS[mode]} gif`;
   lastTick = -1;
   syncURL();
 }
@@ -302,23 +519,33 @@ animationButtons.forEach((button) => {
 });
 
 // Expression picker.
+const faceSetting = document.getElementById("face-setting");
 const facesEl = document.getElementById("faces");
 FACES.forEach((name) => {
   const b = document.createElement("button");
-  b.className = "animation";
+  b.className = "face-choice";
   b.type = "button";
   b.dataset.face = name;
   b.setAttribute("aria-pressed", String(name === face));
-  b.textContent = name;
+  b.innerHTML = `<canvas class="face-preview" width="${FACE_CROP.width * FACE_SCALE}" height="${FACE_CROP.height * FACE_SCALE}" aria-hidden="true"></canvas><span>${name}</span>`;
   b.addEventListener("click", () => setFace(name));
   facesEl.appendChild(b);
 });
+
+function drawFacePreviews() {
+  [...facesEl.children].forEach((b) => {
+    const preview = b.querySelector("canvas").getContext("2d");
+    draw(renderGrid(1, 0, { face: b.dataset.face }), preview, FACE_SCALE, FACE_CROP);
+  });
+}
+drawFacePreviews();
 
 function setFace(name) {
   face = name;
   [...facesEl.children].forEach((b) => {
     b.setAttribute("aria-pressed", String(b.dataset.face === face));
   });
+  renderGift(); // the gift tag's ornament follows the face
   lastTick = -1; // repaint on next frame
   syncURL();
 }
@@ -328,8 +555,10 @@ const flavorsEl = document.getElementById("flavors");
 Object.entries(FLAVORS).forEach(([name, f], i) => {
   const b = document.createElement("button");
   b.className = "flavor";
+  b.type = "button";
+  b.setAttribute("aria-keyshortcuts", String(i + 1));
   b.setAttribute("aria-pressed", String(name === flavor));
-  b.innerHTML = `<span class="cube" style="background:${f.B}"></span>${i + 1} · ${name}`;
+  b.innerHTML = `<span class="cube" style="background:${f.B}" aria-hidden="true"></span><span>${name}</span>`;
   b.addEventListener("click", () => setFlavor(name));
   flavorsEl.appendChild(b);
 });
@@ -340,6 +569,7 @@ function setFlavor(name) {
   document.querySelectorAll(".flavor").forEach((b, i) => {
     b.setAttribute("aria-pressed", String(Object.keys(FLAVORS)[i] === name));
   });
+  drawFacePreviews();
   lastTick = -1; // repaint on next frame
   syncURL();
 }
@@ -356,8 +586,11 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const petName = (forMode) =>
-  [flavor, face === "happy" ? null : face, forMode].filter(Boolean).join("-");
+const petName = (forMode) => [
+  flavor,
+  forMode !== "sleep" && face !== "happy" ? face : null,
+  MODE_LABELS[forMode],
+].filter(Boolean).join("-");
 
 exportButton.addEventListener("click", async () => {
   exportButton.disabled = true;
@@ -375,7 +608,7 @@ exportButton.addEventListener("click", async () => {
     exportStatus.textContent = "Export failed — please try again.";
   } finally {
     exportButton.disabled = false;
-    exportButton.textContent = `export ${mode} gif`;
+    exportButton.textContent = `${MODE_LABELS[mode]} gif`;
   }
 });
 
@@ -406,6 +639,7 @@ packButton.addEventListener("click", async () => {
 });
 
 addEventListener("keydown", (e) => {
+  if (e.target instanceof HTMLInputElement) return; // typing a gift, not picking a flavor
   const names = Object.keys(FLAVORS);
   if (e.key >= "1" && e.key <= String(names.length)) setFlavor(names[e.key - 1]);
 });
@@ -415,17 +649,25 @@ addEventListener("keydown", (e) => {
 // ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
 function syncURL() {
   const slug = stateSlug(flavor, mode, face);
+  const { to, note } = gift();
+  const params = new URLSearchParams();
   // Canonical /p/<slug> everywhere it can unfurl: static files beat rewrites on
   // Vercel, so the ?p= form never reaches pet-page — it survives only for local
   // dev, where /p/* has no rewrite and would 404 on reload.
   const local = location.protocol === "file:" ||
     ["localhost", "127.0.0.1"].includes(location.hostname);
-  const target = local
-    ? (slug ? `?p=${slug}` : location.pathname)
-    : (slug ? `/p/${slug}` : "/");
+  if (local && slug) params.set("p", slug);
+  if (to) params.set("to", to);
+  if (to && note) params.set("note", note);
+  // Gifted default pets still get a real /p/ path (`flavor` round-trips through
+  // parseSlug) so the unfurl can be addressed to the recipient.
+  const path = local
+    ? location.pathname
+    : (slug ? `/p/${slug}` : (to ? `/p/${flavor}` : "/"));
+  const query = params.toString();
   try {
-    history.replaceState(null, "", target);
-  } catch { /* file:// forbids URL rewrites; sharing still works via the copy button */ }
+    history.replaceState(null, "", query ? `${path}?${query}` : path);
+  } catch { /* file:// forbids URL rewrites; sharing still works via the share button */ }
 }
 
 function applySlug(slug) {
@@ -435,21 +677,136 @@ function applySlug(slug) {
   setMode(pet.mode);
 }
 
+// navigator.share exists on some desktop browsers too (Edge, some Chrome builds) and
+// pops the OS share sheet — wrong for a click on a desktop page. Gate it on mobile
+// instead of just feature-detecting: coarse pointer + narrow viewport is a decent proxy.
+const isMobile = () => matchMedia("(pointer: coarse)").matches && matchMedia("(max-width: 768px)").matches;
+
 const shareButton = document.getElementById("share");
 shareButton.addEventListener("click", async () => {
   syncURL();
+  recordSent(); // sharing definitely means "I composed this"
+  const { to } = gift();
+  const nativeShare = typeof navigator.share === "function" && isMobile();
   try {
-    await navigator.clipboard.writeText(location.href);
-    shareButton.textContent = "copied!";
-  } catch {
-    shareButton.textContent = "copy failed";
+    if (nativeShare) {
+      await navigator.share({
+        title: "jellybones",
+        text: to ? `a tiny jelly pet for ${to}` : "meet my tiny jelly pet",
+        url: location.href,
+      });
+      shareButton.textContent = "shared!";
+      exportStatus.textContent = "Pet shared.";
+    } else {
+      await navigator.clipboard.writeText(location.href);
+      shareButton.textContent = "copied!";
+      exportStatus.textContent = "Link copied.";
+    }
+  } catch (error) {
+    if (nativeShare && error?.name === "AbortError") return;
+    if (nativeShare) {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        shareButton.textContent = "copied!";
+        exportStatus.textContent = "Link copied.";
+      } catch {
+        shareButton.textContent = "share failed";
+        exportStatus.textContent = "Sharing failed — please try again.";
+      }
+    } else {
+      shareButton.textContent = "share failed";
+      exportStatus.textContent = "Sharing failed — please try again.";
+    }
   }
-  setTimeout(() => { shareButton.textContent = "copy link"; }, 1200);
+  setTimeout(() => { shareButton.textContent = shareLabel(); }, 1200);
 });
 
-const startSlug = location.pathname.match(/\/p\/([a-z-]+)/i)?.[1]
-  ?? new URLSearchParams(location.search).get("p");
+// Gift tag: ?to= names the recipient, ?note= adds a message — free text rides the
+// query string, never the slug. The tag over the pet doubles as a live preview
+// while composing: the sender sees exactly what the recipient will.
+const giftToInput = document.getElementById("gift-to-input");
+const giftNoteInput = document.getElementById("gift-note-input");
+const giftTag = document.getElementById("gift-tag");
+const giftToEl = document.getElementById("gift-to");
+const giftNoteEl = document.getElementById("gift-note");
+const giftBackButton = document.getElementById("gift-back");
+
+const gift = () => cleanGift({ to: giftToInput.value, note: giftNoteInput.value });
+const shareLabel = () => {
+  const { to } = gift();
+  return to ? `send to ${to.length > 11 ? `${to.slice(0, 10)}…` : to}` : "share";
+};
+
+// The tag's ornament follows the chosen face — the face is the mood of the gift,
+// so a grump gift reads deadpan instead of romantic. No toggle: one less option.
+const ORNAMENTS = { happy: "♥", wink: "☆", ooh: "!", grump: "·", love: "♥♥" };
+
+function renderGift() {
+  const { to, note } = gift();
+  giftTag.hidden = !to;
+  const ornament = (text) => {
+    const span = document.createElement("span");
+    span.textContent = text;
+    span.setAttribute("aria-hidden", "true"); // decoration; readers hear just "for sam"
+    return span;
+  };
+  const orn = ORNAMENTS[face] ?? ORNAMENTS.happy;
+  giftToEl.replaceChildren(
+    ornament(`${orn} `), document.createTextNode(to ? `for ${to}` : ""), ornament(` ${orn}`));
+  giftNoteEl.textContent = note ? `“${note}”` : "";
+  shareButton.textContent = shareLabel(); // share is always primary; a gift relabels it
+}
+
+// Reloading your own composed link must not read as an arrival, so gifts made on
+// this device are remembered locally and skip the "someone made this for you"
+// treatment. Wrong only across devices/private mode, where it errs safe (arrival).
+const SENT_KEY = "jellybones-sent";
+const giftSig = ({ to, note }) => `${to}\n${note}`;
+let sentGifts = [];
+try { sentGifts = JSON.parse(localStorage.getItem(SENT_KEY) ?? "[]"); } catch { /* private mode */ }
+function recordSent() {
+  const g = gift();
+  if (!g.to) return;
+  sentGifts = [...sentGifts.filter((sig) => sig !== giftSig(g)), giftSig(g)].slice(-50);
+  try { localStorage.setItem(SENT_KEY, JSON.stringify(sentGifts)); } catch { /* private mode */ }
+}
+
+let giftURLTimer;
+[giftToInput, giftNoteInput].forEach((input) => {
+  input.addEventListener("input", () => {
+    renderGift();
+    // Debounced: Safari rate-limits replaceState; per-keystroke sync would trip it.
+    clearTimeout(giftURLTimer);
+    giftURLTimer = setTimeout(() => { syncURL(); recordSent(); }, 400);
+  });
+});
+
+// The loop-closer on an arriving gift: clear the tag, hand over the pen.
+giftBackButton.addEventListener("click", () => {
+  giftToInput.value = "";
+  giftNoteInput.value = "";
+  giftBackButton.hidden = true;
+  renderGift();
+  syncURL();
+  giftToInput.focus();
+  exportStatus.textContent = "your turn — remix it and send it";
+});
+
+const startParams = new URLSearchParams(location.search);
+const startSlug = location.pathname.match(/\/p\/([a-z-]+)/i)?.[1] ?? startParams.get("p");
+const arrivedGift = cleanGift({ to: startParams.get("to"), note: startParams.get("note") });
+giftToInput.value = arrivedGift.to;
+giftNoteInput.value = arrivedGift.note;
+renderGift();
 if (startSlug) applySlug(startSlug);
+if (arrivedGift.to) {
+  // Arrival treatment only for gifts NOT composed on this device.
+  if (!sentGifts.includes(giftSig(arrivedGift))) {
+    giftBackButton.hidden = false;
+    caption.textContent = "someone made this for you";
+  }
+  syncURL(); // normalize the arrival URL (sanitized fields, canonical /p/ path)
+}
 </script>
 </body>
 </html>

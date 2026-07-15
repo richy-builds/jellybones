@@ -9,11 +9,15 @@ Tiny wobbly pixel pets. Pick a flavor, pull a face, poke it, keep the gif.
 ## How it works
 
 - **All math, no image assets.** The jelly is a dome profile × a squash factor,
-  rasterized to a 24×24 grid every frame at a chunky 12 fps. Because the body is
-  procedural, every flavor × face × animation combination just works.
+  rasterized to a 24×24 grid every frame at a chunky 12 fps. Awake faces work across
+  wobble and boing; sleep is one canonical closed-eye pose that restores the chosen
+  face when the pet wakes.
 - **Every pet is a URL.** `/p/strawberry-love-boing` is a lovestruck strawberry
   jelly, mid-boing. Slug tokens are order-insensitive and unknown tokens are
   ignored, so old links keep working as new parts are added.
+- **Pets can be gifts.** Add a name and a tiny note and the link arrives addressed:
+  the page greets the recipient, the unfurl says who it's for, and a "send one back"
+  button closes the loop.
 - **Links unfurl animated.** Each `/p/<slug>` page carries its own OG tags and an
   animated GIF preview from `/api/pet-gif` — the same renderer the page uses.
 - **Dependency-free export.** GIF89a frames (and the emoji-pack zip) are encoded

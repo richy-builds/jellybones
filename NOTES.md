@@ -81,6 +81,49 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
 - **2026-07-14 — Sleep stays subtle.** A 4-second breathing loop reuses the procedural body
   deformation at lower amplitude, with closed eyes and one drifting pixel Z. The mode becomes
   a static sleeping pose when reduced motion is requested; poking the jelly wakes it.
+- **2026-07-15 — Sleep is one complete pose.** Expressions are awake customization, so the
+  expression picker hides during sleep and the renderer ignores the saved face until the pet
+  wakes. The face stays in URL state so waking or revisiting the link restores the user's choice.
+- **2026-07-15 — Expressions are a visual palette, not a second mode switch.** Motion keeps
+  the segmented control; expressions use cropped portraits drawn by the shared procedural
+  renderer and recolor with flavor. This separates the two concepts without explanatory copy.
+- **2026-07-15 — Customization becomes one responsive workbench.** Desktop pairs the large
+  preview with a 380 px Customize panel; below 800 px the same panel stacks beneath the pet.
+  Flavor, face, motion, and output stay visible instead of moving into drawers or accordions.
+- **2026-07-15 — Public language can differ from stable state tokens.** The UI and downloads
+  call idle motion "wobble," while slugs and renderer modes keep `idle` so old links survive.
+  Share uses the native device sheet when available and falls back to copying the canonical URL.
+- **2026-07-15 — Removed the technical footer metadata from the main UI.** `24×24 px · 12 fps ·
+  all math` was a nice implementation signature but made the maker feel more like a demo; the
+  pet and customization controls should carry the page.
+- **2026-07-15 — Gift mode: pets are addressed, not just shared.** The viral loop is "someone
+  made this *for you*", so a recipient name + note ride the URL as `?to=`/`&note=` query params
+  next to the slug — free text never becomes slug tokens. `cleanGift` in the core (strip control
+  chars, collapse whitespace, cap 24/80, note requires a name) is shared by the page and
+  `pet-page`, so the gift tag matches the unfurl. The tag over the pet doubles as a live preview
+  while composing; an arriving gift adds a "send one back" CTA that clears the fields — the
+  loop-closer. Gifted default pets canonicalize to `/p/<flavor>` (round-trips through
+  `parseSlug`) so even an uncustomized gift unfurls addressed. URL sync from the inputs is
+  debounced because Safari rate-limits `replaceState`.
+- **2026-07-15 — Gift-tag ornaments follow the face, not a setting.** Hearts around "for sam"
+  clash with a grump jelly, but a toggle would be config creep. The face is already the mood
+  the sender chose, so the tag speaks it: happy ♥ · love ♥♥ · wink ☆ · ooh ! · grump · (deadpan
+  dots). Ornaments are aria-hidden spans (readers hear just "for sam"), built in DOM rather
+  than CSS pseudo-content so every browser renders them.
+- **2026-07-15 — Gift tag sits inside the canvas's empty air.** The top ~7 grid rows are
+  always transparent (dome starts at row 7; boing peaks at row 3 ≈ 42px), so the tag pulls
+  down 28px into the canvas (`margin-bottom: -56px`, z-indexed above it) and reads as part
+  of the character, not page chrome. Type scaled up to 19px/13px to carry the moment.
+- **2026-07-15 — "Send one back" is arrival-only, remembered on-device.** A sender reloading
+  their own composed link is indistinguishable from a recipient arriving, so composed gift
+  signatures (`to\note`, last 50) are kept in localStorage and matching arrivals skip the
+  "someone made this for you" treatment. Wrong only across devices/private mode, where it
+  errs toward showing the arrival view — the safe direction. No backend, consistent with
+  URL-as-state.
+- **2026-07-15 — Share/send is the primary action.** The URL is the growth loop, so share
+  (or "send to <name>" when gifted) takes the full-width milk button; GIF export and the
+  emoji pack drop to the secondary pair. Export labels shorten to "<motion> gif" to fit
+  the half-width slot.
 
 ## Character spec (spike)
 
@@ -141,4 +184,7 @@ client-side GIF export · deploy to Vercel.
       (`api/pet-gif.mjs`), `/p/*` rewrite in `vercel.json`; mock-tested in Node
 - [x] Deployed to https://jellybones.vercel.app (2026-07-15) — root, `/p/<slug>` meta, and
       `/api/pet-gif` all verified live via curl
+- [x] Gift mode — `?to=`/`&note=` on any pet URL, live-preview gift tag, addressed OG
+      unfurls, "send one back" CTA (2026-07-15)
 - [ ] Paste a `/p/...` link into Slack/iMessage to verify the unfurl renders the pet
+- [ ] Paste a gifted link (`/p/...?to=...&note=...`) somewhere real to verify the addressed unfurl

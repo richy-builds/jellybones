@@ -43,6 +43,10 @@ ES modules won't load from `file://`. On localhost, pet state uses `?p=<slug>`
 (the `/p/` form needs the Vercel rewrite — use `vercel dev` if you need the
 functions locally, though `verify.mjs` mock-tests them without it).
 
+**Hard-refresh (⌘⇧R) after `jelly-core.mjs` gains an export.** `http.server` sends no
+`Cache-Control`, so browsers heuristically cache the module; a fresh `index.html`
+importing a name the stale module lacks kills the whole script (blank pet, no controls).
+
 ## Verifying changes
 
 ```sh
