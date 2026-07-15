@@ -74,6 +74,10 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
 - **2026-07-15 — Copy scrubbed for the public.** "spike 001 · proof of charm" →
   "pixel pet maker"; the footer drops "no sprites". README added with an embedded
   live pet GIF (the transparent `/api/pet-gif` default exists for exactly this).
+- **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
+  framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
+  structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records
+  the working rules: zero deps, pure core, links never break, push-to-main deploys prod.
 - **2026-07-14 — Sleep stays subtle.** A 4-second breathing loop reuses the procedural body
   deformation at lower amplitude, with closed eyes and one drifting pixel Z. The mode becomes
   a static sleeping pose when reduced motion is requested; poking the jelly wakes it.
