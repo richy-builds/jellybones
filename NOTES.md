@@ -41,6 +41,18 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   Slug tokens (`strawberry-sleep`) are order-insensitive and unknown tokens are ignored, so
   links never break as parts are added. Hash was rejected: fragments never reach the server,
   which would make per-pet OG previews impossible later.
+- **2026-07-15 — Core extracted to `jelly-core.mjs` (ES module).** One pure module (renderer,
+  GIF encoder, slug codec) imported by both the page and the Vercel functions — per-pet OG
+  previews and the GIF endpoint reuse the exact pixels the browser draws. Verified
+  byte-identical exports (sha256) before/after. Tradeoff: modules kill `file://` dev; use
+  `python3 -m http.server`.
+- **2026-07-15 — OG images are GIFs from `/api/pet-gif`, not PNGs.** Reuses the existing
+  encoder, zero new dependencies, and unfurls *animate* where platforms allow it. `bg=1`
+  composites onto the page ink because transparent og:images render unpredictably;
+  the transparent default is GitHub-README-embeddable — a distribution surface in itself.
+- **2026-07-15 — Per-pet meta via marker swap.** `/p/:slug` rewrites to `api/pet-page.mjs`,
+  which swaps the `<!-- pet-meta -->` block in `index.html` for pet-specific title/OG tags.
+  Root `/` stays static.
 - **2026-07-14 — Sleep stays subtle.** A 4-second breathing loop reuses the procedural body
   deformation at lower amplitude, with closed eyes and one drifting pixel Z. The mode becomes
   a static sleeping pose when reduced motion is requested; poking the jelly wakes it.
@@ -94,6 +106,11 @@ client-side GIF export · deploy to Vercel.
 - [x] `git init` so editor-buffer accidents can't eat work (one already happened)
 - [x] GIF export spike — 192×192 transparent loop, 17 frames / 1.42 s, ~21 KB; verified in Chrome
 - [x] Second animation cycle — 4-second breathe, closed eyes, drifting Z; verified desktop/mobile
-- [ ] Animation-aware GIF export (idle / boing / sleep)
+- [ ] Animation-aware GIF export (idle / boing / sleep) — sleep already exportable via
+      `modeGrids("sleep")`; boing needs a loop-seam design; UI button still idle-only
+- [ ] Phase 3: expressions (~5 face variants as slug tokens) + one-click Slack emoji pack
+      (store-only zip, hand-written, 128×128 GIFs)
 - [x] URL state spike — `?p=flavor-mode` synced live + copy-link button; headless-Chrome verified
-- [ ] OG link previews — per-pet HTML meta + PNG image endpoint (both reuse `renderGrid`); needs Vercel functions + `/p/*` rewrite
+- [x] OG link previews — per-pet HTML meta (`api/pet-page.mjs`) + animated GIF endpoint
+      (`api/pet-gif.mjs`), `/p/*` rewrite in `vercel.json`; mock-tested in Node
+- [ ] Deploy to jellybones.vercel.app; paste a `/p/...` link into Slack to verify the unfurl

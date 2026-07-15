@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jellybones — spike 001</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- pet-meta -->
+<title>jellybones — tiny wobbly pixel pets</title>
+<meta name="description" content="Make a tiny jelly pet: pick a flavor, poke it, export the looping gif.">
+<meta property="og:title" content="jellybones — tiny wobbly pixel pets">
+<meta property="og:description" content="Make a tiny jelly pet: pick a flavor, poke it, export the looping gif.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://jellybones.vercel.app/api/pet-gif?bg=1">
+<meta name="twitter:card" content="summary">
+<!-- /pet-meta -->
 <style>
   :root {
     --ink: #171129;
@@ -181,106 +190,12 @@
   <footer>24×24 px · 12 fps · no sprites, all math</footer>
 </main>
 
-<script>
-"use strict";
+<script type="module">
+import {
+  COMMON, FLAVORS, GRID, FPS, IDLE_FRAMES, makeGif, modeGrids, parseSlug, renderGrid, stateSlug,
+} from "./jelly-core.mjs";
 
-const GRID = 24, SCALE = 14, CX = 11.5, GROUND = 20, BASE_H = 13, BASE_RX = 7.5, FPS = 12;
-const EXPORT_SCALE = 8, EXPORT_FRAMES = 17;
-
-const FLAVORS = {
-  lime:       { B: "#7fd348", O: "#35771f", L: "#a6e87d", S: "#e9ffd2", glow: "rgba(127,211,72,.16)" },
-  strawberry: { B: "#f25d7e", O: "#99284d", L: "#f78ba4", S: "#ffdce6", glow: "rgba(242,93,126,.16)" },
-  blueberry:  { B: "#5c6ce8", O: "#2c3494", L: "#8b97f2", S: "#d6dbff", glow: "rgba(92,108,232,.18)" },
-};
-const COMMON = { N: "#f6eedc", E: "#221a38", M: "#221a38", C: "#ee86ae", H: "#0d0a1c" };
-
-function shapeHW(u) {
-  // Circular dome over the top 70%, straight sides down to the base.
-  const d = 0.7;
-  if (u >= d) return 1;
-  const q = (d - u) / d;
-  return Math.sqrt(Math.max(0, 1 - q * q));
-}
-
-// Pure frame renderer: squash, lift, face state, and optional sleep progress → palette-key grid.
-function renderGrid(s, lift, blink, mouthOpen, sleepProgress = null) {
-  const h = BASE_H * s;
-  const rx = BASE_RX / Math.sqrt(s);
-  const base = GROUND - lift;
-  const topY = base - h;
-
-  const inside = (x, y) => {
-    if (y > base) return false;
-    const u = (y + 0.5 - topY) / h;
-    return u > 0 && Math.abs(x - CX) <= rx * shapeHW(u);
-  };
-
-  const g = Array.from({ length: GRID }, () => Array(GRID).fill("."));
-  for (let y = 0; y < GRID; y++)
-    for (let x = 0; x < GRID; x++) if (inside(x, y)) g[y][x] = "B";
-
-  const NB = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-  for (let y = 0; y < GRID; y++)
-    for (let x = 0; x < GRID; x++) {
-      if (g[y][x] !== "B") continue;
-      if (NB.some(([dx, dy]) => (g[y + dy]?.[x + dx] ?? ".") === ".")) g[y][x] = "O";
-    }
-
-  // Inner light region: 2 erosions in from the outline.
-  const erode = (from, to) => {
-    for (let y = 0; y < GRID; y++)
-      for (let x = 0; x < GRID; x++) {
-        if (g[y][x] !== from) continue;
-        if (NB.every(([dx, dy]) => ["B", "L", from, to].includes(g[y + dy]?.[x + dx] ?? ".")))
-          g[y][x] = to;
-      }
-  };
-  erode("B", "b");
-  erode("b", "L");
-  for (let y = 0; y < GRID; y++)
-    for (let x = 0; x < GRID; x++) if (g[y][x] === "b") g[y][x] = "B";
-
-  const put = (x, y, c) => {
-    if (g[y]?.[x] === "B" || g[y]?.[x] === "L") g[y][x] = c;
-  };
-
-  // The bone travels with the body, low and clear of the face.
-  const boneMid = base - 3;
-  [8, 9, 14, 15].forEach((bx) => { put(bx, boneMid - 1, "N"); put(bx, boneMid + 1, "N"); });
-  for (let x = 8; x <= 15; x++) put(x, boneMid, "N");
-
-  // Face rides the surface and scales with the squash.
-  const eyeY = Math.round(topY + h * 0.3);
-  [[8, 9], [14, 15]].forEach(([a, b]) => {
-    put(a, eyeY, "E"); put(b, eyeY, "E");
-    if (!blink) { put(a, eyeY - 1, "E"); put(b, eyeY - 1, "E"); }
-  });
-  put(11, eyeY + 2, "M"); put(12, eyeY + 2, "M");
-  if (mouthOpen) { put(11, eyeY + 3, "M"); put(12, eyeY + 3, "M"); }
-  put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C");
-
-  // A tiny Z drifts up beside the sleeping jelly, then loops back to its cheek.
-  if (sleepProgress !== null && sleepProgress < 0.82) {
-    const zX = 18 + Math.floor(sleepProgress * 2);
-    const zY = 6 - Math.floor(sleepProgress * 5);
-    [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]].forEach(([dx, dy]) => {
-      if (g[zY + dy]?.[zX + dx] === ".") g[zY + dy][zX + dx] = "N";
-    });
-  }
-
-  // Glass highlight hugging the upper-left curve.
-  put(9, Math.round(topY) + 2, "S");
-  put(8, Math.round(topY) + 3, "S");
-  put(8, Math.round(topY) + 4, "S");
-
-  // Ground shadow: wider on squash, smaller when airborne.
-  let shHW = rx * (0.95 + (1 - s) * 2.5) - lift * 0.9;
-  shHW = Math.max(2, Math.round(shHW));
-  for (let x = Math.round(CX - shHW); x <= Math.round(CX + shHW); x++)
-    if ((g[GROUND + 1][x] ?? "x") === ".") g[GROUND + 1][x] = "H";
-
-  return g;
-}
+const SCALE = 14;
 
 const canvas = document.getElementById("pet");
 canvas.width = GRID * SCALE;
@@ -297,125 +212,6 @@ function draw(g) {
       const c = pal[g[y][x]];
       if (c) { ctx.fillStyle = c; ctx.fillRect(x * SCALE, y * SCALE, SCALE, SCALE); }
     }
-}
-
-function gifPalette(flavorName) {
-  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H"];
-  const palette = { ...COMMON, ...FLAVORS[flavorName] };
-  const rgb = colors.map((key) => {
-    if (!key) return [0, 0, 0];
-    const hex = palette[key];
-    return [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
-  });
-  const index = new Map(colors.slice(1).map((key, i) => [key, i + 1]));
-  index.set(".", 0);
-  index.set("M", index.get("E"));
-  return { rgb, index };
-}
-
-function scaledIndices(grid, index) {
-  const size = GRID * EXPORT_SCALE;
-  const pixels = new Uint8Array(size * size);
-  for (let y = 0; y < GRID; y++) {
-    for (let sy = 0; sy < EXPORT_SCALE; sy++) {
-      const row = (y * EXPORT_SCALE + sy) * size;
-      for (let x = 0; x < GRID; x++) {
-        const colorIndex = index.get(grid[y][x]);
-        pixels.fill(colorIndex, row + x * EXPORT_SCALE, row + (x + 1) * EXPORT_SCALE);
-      }
-    }
-  }
-  return pixels;
-}
-
-function lzwEncode(pixels, minCodeSize) {
-  const clearCode = 1 << minCodeSize;
-  const endCode = clearCode + 1;
-  let codeSize = minCodeSize + 1;
-  let nextCode = endCode + 1;
-  let dictionary = new Map();
-  let bitBuffer = 0;
-  let bitCount = 0;
-  const output = [];
-
-  const writeCode = (code) => {
-    bitBuffer |= code << bitCount;
-    bitCount += codeSize;
-    while (bitCount >= 8) {
-      output.push(bitBuffer & 0xff);
-      bitBuffer >>>= 8;
-      bitCount -= 8;
-    }
-    // The decoder learns one entry behind the encoder, so grow after writing
-    // the last code that still fits the current width.
-    if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
-  };
-
-  const reset = () => {
-    dictionary = new Map();
-    codeSize = minCodeSize + 1;
-    nextCode = endCode + 1;
-  };
-
-  writeCode(clearCode);
-  let prefix = pixels[0];
-  for (let i = 1; i < pixels.length; i++) {
-    const value = pixels[i];
-    const key = (prefix << 8) | value;
-    const found = dictionary.get(key);
-    if (found !== undefined) {
-      prefix = found;
-      continue;
-    }
-
-    writeCode(prefix);
-    if (nextCode < 4096) {
-      dictionary.set(key, nextCode++);
-    } else {
-      writeCode(clearCode);
-      reset();
-    }
-    prefix = value;
-  }
-  writeCode(prefix);
-  writeCode(endCode);
-  if (bitCount > 0) output.push(bitBuffer & 0xff);
-  return output;
-}
-
-function makeIdleGif(flavorName) {
-  const size = GRID * EXPORT_SCALE;
-  const bytes = [];
-  const ascii = (text) => { for (const char of text) bytes.push(char.charCodeAt(0)); };
-  const word = (value) => bytes.push(value & 0xff, (value >> 8) & 0xff);
-  const blocks = (data) => {
-    for (let i = 0; i < data.length; i += 255) bytes.push(Math.min(255, data.length - i), ...data.slice(i, i + 255));
-    bytes.push(0);
-  };
-  const { rgb, index } = gifPalette(flavorName);
-
-  ascii("GIF89a");
-  word(size); word(size);
-  bytes.push(0xf3, 0, 0); // 16-color global table, transparent background index 0.
-  for (let i = 0; i < 16; i++) bytes.push(...(rgb[i] ?? [0, 0, 0]));
-  bytes.push(0x21, 0xff, 0x0b); ascii("NETSCAPE2.0");
-  bytes.push(0x03, 0x01, 0x00, 0x00, 0x00); // Loop forever.
-
-  for (let frame = 0; frame < EXPORT_FRAMES; frame++) {
-    const phase = (2 * Math.PI * frame) / EXPORT_FRAMES;
-    const grid = renderGrid(1 + 0.055 * Math.sin(phase), 0, false, false);
-    const delay = Math.round(((frame + 1) * 100) / FPS) - Math.round((frame * 100) / FPS);
-    bytes.push(0x21, 0xf9, 0x04, 0x09);
-    word(delay);
-    bytes.push(0x00, 0x00); // Transparent color index, then extension terminator.
-    bytes.push(0x2c);
-    word(0); word(0); word(size); word(size);
-    bytes.push(0x00, 0x04); // No local palette; 4-bit minimum LZW code size.
-    blocks(lzwEncode(scaledIndices(grid, index), 4));
-  }
-
-  bytes.push(0x3b);
-  return new Blob([new Uint8Array(bytes)], { type: "image/gif" });
 }
 
 // Boing: [squash, lift, mouthOpen] per tick — anticipate, jump, land, settle.
@@ -523,11 +319,11 @@ const exportStatus = document.getElementById("export-status");
 exportButton.addEventListener("click", async () => {
   exportButton.disabled = true;
   exportButton.textContent = "making gif…";
-  exportStatus.textContent = `Building ${EXPORT_FRAMES} frames…`;
+  exportStatus.textContent = `Building ${IDLE_FRAMES} frames…`;
   try {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const exportedFlavor = flavor;
-    const blob = makeIdleGif(exportedFlavor);
+    const blob = new Blob([makeGif(modeGrids("idle"), exportedFlavor)], { type: "image/gif" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -552,17 +348,8 @@ addEventListener("keydown", (e) => {
 // Shareable pet state. Canonical form is /p/<slug> (needs the deploy rewrite); ?p=<slug>
 // works on any static server. Slug tokens are order-insensitive and unknown tokens are
 // ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
-const MODES = new Set(animationButtons.map((b) => b.dataset.mode));
-
-function stateSlug() {
-  const tokens = [];
-  if (flavor !== "lime") tokens.push(flavor);
-  if (mode !== "idle") tokens.push(mode);
-  return tokens.join("-");
-}
-
 function syncURL() {
-  const slug = stateSlug();
+  const slug = stateSlug(flavor, mode);
   const target = /\/p\//.test(location.pathname)
     ? (slug ? `/p/${slug}` : "/")
     : (slug ? `?p=${slug}` : location.pathname);
@@ -572,10 +359,9 @@ function syncURL() {
 }
 
 function applySlug(slug) {
-  for (const token of slug.toLowerCase().split("-")) {
-    if (FLAVORS[token]) setFlavor(token);
-    else if (MODES.has(token)) setMode(token);
-  }
+  const pet = parseSlug(slug);
+  setFlavor(pet.flavor);
+  setMode(pet.mode);
 }
 
 const shareButton = document.getElementById("share");
