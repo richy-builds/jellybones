@@ -10,6 +10,8 @@
     --ink-raise: #211a38;
     --milk: #f3ebd3;
     --dim: #8f84b5;
+    --dim-border: rgba(143, 132, 181, 0.35);
+    --ink-panel: rgba(33, 26, 56, 0.55);
     --glow: rgba(127, 211, 72, 0.16);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,6 +27,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: min(100vw, 600px);
     gap: 20px;
     padding: 40px 24px;
     text-align: center;
@@ -69,6 +72,32 @@
     image-rendering: pixelated;
   }
   .caption { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+  .animations {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    border: 1px solid var(--dim-border);
+    border-radius: 10px;
+    background: var(--ink-panel);
+  }
+  .animation {
+    min-width: 76px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .animation:hover { color: var(--milk); }
+  .animation[aria-pressed="true"] { background: var(--dim); color: var(--ink); }
+  .animation:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
   .flavors { display: flex; gap: 14px; }
   .flavor {
     display: flex;
@@ -97,7 +126,38 @@
   .flavor[aria-pressed="true"] { color: var(--milk); }
   .flavor[aria-pressed="true"] .cube { outline: 2px solid var(--milk); outline-offset: 3px; }
   .flavor:focus-visible { outline: 2px solid var(--dim); }
+  .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .export {
+    min-height: 44px;
+    padding: 10px 18px;
+    border: 2px solid var(--dim);
+    border-radius: 8px;
+    background: var(--ink-raise);
+    color: var(--milk);
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.28);
+  }
+  .export:hover:not(:disabled) { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.28); }
+  .export:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.28); }
+  .export:focus-visible { outline: 2px solid var(--milk); outline-offset: 4px; }
+  .export:disabled { cursor: wait; opacity: 0.65; }
+  .export-status { min-height: 1.2em; font-size: 10px; color: var(--dim); letter-spacing: 0.08em; }
   footer { font-size: 10px; color: var(--dim); opacity: 0.7; letter-spacing: 0.15em; }
+  @media (max-height: 700px) {
+    main { gap: 12px; padding-block: 20px; }
+    canvas { width: 280px; max-width: 72vw; }
+  }
+  @media (max-width: 420px) {
+    .caption { font-size: 10px; letter-spacing: 0.04em; }
+    .flavors { width: 100%; justify-content: center; gap: 4px; }
+    .flavor { min-width: 0; padding-inline: 4px; letter-spacing: 0.08em; }
+    footer { max-width: 100%; letter-spacing: 0.08em; }
+  }
 </style>
 </head>
 <body>
@@ -107,8 +167,17 @@
   <button class="stage" id="stage" aria-label="poke the jelly">
     <canvas id="pet" width="336" height="336"></canvas>
   </button>
-  <div class="caption">click the jelly · press 1 2 3 to change flavor</div>
+  <div class="caption" id="caption">click the jelly · press 1 2 3 to change flavor</div>
+  <div class="animations" id="animations" role="group" aria-label="animation">
+    <button class="animation" type="button" data-mode="idle" aria-pressed="true">idle</button>
+    <button class="animation" type="button" data-mode="sleep" aria-pressed="false">sleep</button>
+  </div>
   <div class="flavors" id="flavors" role="group" aria-label="flavor"></div>
+  <div class="actions">
+    <button class="export" id="export" type="button">export idle gif</button>
+    <button class="export" id="share" type="button">copy link</button>
+  </div>
+  <div class="export-status" id="export-status" role="status" aria-live="polite"></div>
   <footer>24×24 px · 12 fps · no sprites, all math</footer>
 </main>
 
@@ -116,6 +185,7 @@
 "use strict";
 
 const GRID = 24, SCALE = 14, CX = 11.5, GROUND = 20, BASE_H = 13, BASE_RX = 7.5, FPS = 12;
+const EXPORT_SCALE = 8, EXPORT_FRAMES = 17;
 
 const FLAVORS = {
   lime:       { B: "#7fd348", O: "#35771f", L: "#a6e87d", S: "#e9ffd2", glow: "rgba(127,211,72,.16)" },
@@ -132,8 +202,8 @@ function shapeHW(u) {
   return Math.sqrt(Math.max(0, 1 - q * q));
 }
 
-// Pure frame renderer: squash s, jump lift (px), blink, mouth open → grid of palette keys.
-function renderGrid(s, lift, blink, mouthOpen) {
+// Pure frame renderer: squash, lift, face state, and optional sleep progress → palette-key grid.
+function renderGrid(s, lift, blink, mouthOpen, sleepProgress = null) {
   const h = BASE_H * s;
   const rx = BASE_RX / Math.sqrt(s);
   const base = GROUND - lift;
@@ -189,6 +259,15 @@ function renderGrid(s, lift, blink, mouthOpen) {
   if (mouthOpen) { put(11, eyeY + 3, "M"); put(12, eyeY + 3, "M"); }
   put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C");
 
+  // A tiny Z drifts up beside the sleeping jelly, then loops back to its cheek.
+  if (sleepProgress !== null && sleepProgress < 0.82) {
+    const zX = 18 + Math.floor(sleepProgress * 2);
+    const zY = 6 - Math.floor(sleepProgress * 5);
+    [[0, 0], [1, 0], [2, 0], [1, 1], [0, 2], [1, 2], [2, 2]].forEach(([dx, dy]) => {
+      if (g[zY + dy]?.[zX + dx] === ".") g[zY + dy][zX + dx] = "N";
+    });
+  }
+
   // Glass highlight hugging the upper-left curve.
   put(9, Math.round(topY) + 2, "S");
   put(8, Math.round(topY) + 3, "S");
@@ -220,6 +299,125 @@ function draw(g) {
     }
 }
 
+function gifPalette(flavorName) {
+  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H"];
+  const palette = { ...COMMON, ...FLAVORS[flavorName] };
+  const rgb = colors.map((key) => {
+    if (!key) return [0, 0, 0];
+    const hex = palette[key];
+    return [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+  });
+  const index = new Map(colors.slice(1).map((key, i) => [key, i + 1]));
+  index.set(".", 0);
+  index.set("M", index.get("E"));
+  return { rgb, index };
+}
+
+function scaledIndices(grid, index) {
+  const size = GRID * EXPORT_SCALE;
+  const pixels = new Uint8Array(size * size);
+  for (let y = 0; y < GRID; y++) {
+    for (let sy = 0; sy < EXPORT_SCALE; sy++) {
+      const row = (y * EXPORT_SCALE + sy) * size;
+      for (let x = 0; x < GRID; x++) {
+        const colorIndex = index.get(grid[y][x]);
+        pixels.fill(colorIndex, row + x * EXPORT_SCALE, row + (x + 1) * EXPORT_SCALE);
+      }
+    }
+  }
+  return pixels;
+}
+
+function lzwEncode(pixels, minCodeSize) {
+  const clearCode = 1 << minCodeSize;
+  const endCode = clearCode + 1;
+  let codeSize = minCodeSize + 1;
+  let nextCode = endCode + 1;
+  let dictionary = new Map();
+  let bitBuffer = 0;
+  let bitCount = 0;
+  const output = [];
+
+  const writeCode = (code) => {
+    bitBuffer |= code << bitCount;
+    bitCount += codeSize;
+    while (bitCount >= 8) {
+      output.push(bitBuffer & 0xff);
+      bitBuffer >>>= 8;
+      bitCount -= 8;
+    }
+    // The decoder learns one entry behind the encoder, so grow after writing
+    // the last code that still fits the current width.
+    if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
+  };
+
+  const reset = () => {
+    dictionary = new Map();
+    codeSize = minCodeSize + 1;
+    nextCode = endCode + 1;
+  };
+
+  writeCode(clearCode);
+  let prefix = pixels[0];
+  for (let i = 1; i < pixels.length; i++) {
+    const value = pixels[i];
+    const key = (prefix << 8) | value;
+    const found = dictionary.get(key);
+    if (found !== undefined) {
+      prefix = found;
+      continue;
+    }
+
+    writeCode(prefix);
+    if (nextCode < 4096) {
+      dictionary.set(key, nextCode++);
+    } else {
+      writeCode(clearCode);
+      reset();
+    }
+    prefix = value;
+  }
+  writeCode(prefix);
+  writeCode(endCode);
+  if (bitCount > 0) output.push(bitBuffer & 0xff);
+  return output;
+}
+
+function makeIdleGif(flavorName) {
+  const size = GRID * EXPORT_SCALE;
+  const bytes = [];
+  const ascii = (text) => { for (const char of text) bytes.push(char.charCodeAt(0)); };
+  const word = (value) => bytes.push(value & 0xff, (value >> 8) & 0xff);
+  const blocks = (data) => {
+    for (let i = 0; i < data.length; i += 255) bytes.push(Math.min(255, data.length - i), ...data.slice(i, i + 255));
+    bytes.push(0);
+  };
+  const { rgb, index } = gifPalette(flavorName);
+
+  ascii("GIF89a");
+  word(size); word(size);
+  bytes.push(0xf3, 0, 0); // 16-color global table, transparent background index 0.
+  for (let i = 0; i < 16; i++) bytes.push(...(rgb[i] ?? [0, 0, 0]));
+  bytes.push(0x21, 0xff, 0x0b); ascii("NETSCAPE2.0");
+  bytes.push(0x03, 0x01, 0x00, 0x00, 0x00); // Loop forever.
+
+  for (let frame = 0; frame < EXPORT_FRAMES; frame++) {
+    const phase = (2 * Math.PI * frame) / EXPORT_FRAMES;
+    const grid = renderGrid(1 + 0.055 * Math.sin(phase), 0, false, false);
+    const delay = Math.round(((frame + 1) * 100) / FPS) - Math.round((frame * 100) / FPS);
+    bytes.push(0x21, 0xf9, 0x04, 0x09);
+    word(delay);
+    bytes.push(0x00, 0x00); // Transparent color index, then extension terminator.
+    bytes.push(0x2c);
+    word(0); word(0); word(size); word(size);
+    bytes.push(0x00, 0x04); // No local palette; 4-bit minimum LZW code size.
+    blocks(lzwEncode(scaledIndices(grid, index), 4));
+  }
+
+  bytes.push(0x3b);
+  return new Blob([new Uint8Array(bytes)], { type: "image/gif" });
+}
+
 // Boing: [squash, lift, mouthOpen] per tick — anticipate, jump, land, settle.
 const BOING = [
   [0.84, 0, 0], [0.84, 0, 0],
@@ -228,6 +426,9 @@ const BOING = [
 ];
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SLEEP_TICKS = FPS * 4;
+let mode = "idle";
+let modeAt = 0;
 let boingAt = -Infinity;
 let nextBlink = FPS * 3;
 let blinkUntil = -1;
@@ -243,7 +444,12 @@ function frame(now) {
     }
     const blink = tick < blinkUntil;
     const bi = tick - boingAt;
-    if (bi >= 0 && bi < BOING.length) {
+    if (mode === "sleep") {
+      const sleepTick = Math.max(0, tick - modeAt) % SLEEP_TICKS;
+      const sleepProgress = sleepTick / SLEEP_TICKS;
+      const s = reducedMotion ? 1 : 1 + 0.04 * Math.sin(2 * Math.PI * sleepProgress);
+      draw(renderGrid(s, 0, true, false, reducedMotion ? 0.25 : sleepProgress));
+    } else if (bi >= 0 && bi < BOING.length) {
       const [s, lift, mo] = BOING[bi];
       draw(renderGrid(s, lift, blink, !!mo));
     } else if (reducedMotion) {
@@ -257,10 +463,39 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 
+const stage = document.getElementById("stage");
+
 function boing() {
+  if (mode === "sleep") {
+    setMode("idle");
+    return;
+  }
   if (lastTick - boingAt >= BOING.length) boingAt = lastTick + 1;
 }
-document.getElementById("stage").addEventListener("click", boing);
+stage.addEventListener("click", boing);
+
+const caption = document.getElementById("caption");
+const animationButtons = [...document.querySelectorAll(".animation")];
+
+function setMode(nextMode) {
+  mode = nextMode;
+  modeAt = lastTick + 1;
+  boingAt = -Infinity;
+  animationButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
+  });
+  const sleeping = mode === "sleep";
+  stage.setAttribute("aria-label", sleeping ? "wake the jelly" : "poke the jelly");
+  caption.textContent = sleeping
+    ? "click the jelly to wake it · press 1 2 3 to change flavor"
+    : "click the jelly · press 1 2 3 to change flavor";
+  lastTick = -1;
+  syncURL();
+}
+
+animationButtons.forEach((button) => {
+  button.addEventListener("click", () => setMode(button.dataset.mode));
+});
 
 // Flavor swatches + 1/2/3 keys.
 const flavorsEl = document.getElementById("flavors");
@@ -280,12 +515,84 @@ function setFlavor(name) {
     b.setAttribute("aria-pressed", String(Object.keys(FLAVORS)[i] === name));
   });
   lastTick = -1; // repaint on next frame
+  syncURL();
 }
+
+const exportButton = document.getElementById("export");
+const exportStatus = document.getElementById("export-status");
+exportButton.addEventListener("click", async () => {
+  exportButton.disabled = true;
+  exportButton.textContent = "making gif…";
+  exportStatus.textContent = `Building ${EXPORT_FRAMES} frames…`;
+  try {
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const exportedFlavor = flavor;
+    const blob = makeIdleGif(exportedFlavor);
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `jellybones-${exportedFlavor}-idle.gif`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    exportStatus.textContent = `${exportedFlavor} jelly exported · ${Math.ceil(blob.size / 1024)} KB`;
+  } catch (error) {
+    console.error(error);
+    exportStatus.textContent = "Export failed — please try again.";
+  } finally {
+    exportButton.disabled = false;
+    exportButton.textContent = "export idle gif";
+  }
+});
 
 addEventListener("keydown", (e) => {
   const names = Object.keys(FLAVORS);
   if (e.key >= "1" && e.key <= String(names.length)) setFlavor(names[e.key - 1]);
 });
+
+// Shareable pet state. Canonical form is /p/<slug> (needs the deploy rewrite); ?p=<slug>
+// works on any static server. Slug tokens are order-insensitive and unknown tokens are
+// ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
+const MODES = new Set(animationButtons.map((b) => b.dataset.mode));
+
+function stateSlug() {
+  const tokens = [];
+  if (flavor !== "lime") tokens.push(flavor);
+  if (mode !== "idle") tokens.push(mode);
+  return tokens.join("-");
+}
+
+function syncURL() {
+  const slug = stateSlug();
+  const target = /\/p\//.test(location.pathname)
+    ? (slug ? `/p/${slug}` : "/")
+    : (slug ? `?p=${slug}` : location.pathname);
+  try {
+    history.replaceState(null, "", target);
+  } catch { /* file:// forbids URL rewrites; sharing still works via the copy button */ }
+}
+
+function applySlug(slug) {
+  for (const token of slug.toLowerCase().split("-")) {
+    if (FLAVORS[token]) setFlavor(token);
+    else if (MODES.has(token)) setMode(token);
+  }
+}
+
+const shareButton = document.getElementById("share");
+shareButton.addEventListener("click", async () => {
+  syncURL();
+  try {
+    await navigator.clipboard.writeText(location.href);
+    shareButton.textContent = "copied!";
+  } catch {
+    shareButton.textContent = "copy failed";
+  }
+  setTimeout(() => { shareButton.textContent = "copy link"; }, 1200);
+});
+
+const startSlug = location.pathname.match(/\/p\/([a-z-]+)/i)?.[1]
+  ?? new URLSearchParams(location.search).get("p");
+if (startSlug) applySlug(startSlug);
 </script>
 </body>
 </html>

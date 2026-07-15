@@ -32,6 +32,18 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   70%, straight sides to a flat base (flan/pudding profile — fitting for a jelly).
 - **2026-07-14 — Face/bone layout.** Bone low (rows base−4…base−2), face high (eyes at 30%
   of body height). First attempt had the bone under the mouth and it read as buckteeth.
+- **2026-07-14 — Dependency-free GIF export.** Keep the zero-build spike self-contained:
+  encode indexed GIF89a frames directly from `renderGrid`, with the current flavor's compact
+  palette and transparent background. The export is a deterministic 17-frame idle loop;
+  random live blinks are omitted so the seam always closes cleanly.
+- **2026-07-15 — Pet state lives in the URL.** Sharing is the growth loop, so every pet is a
+  link: canonical `/p/<slug>` (needs a rewrite at deploy), `?p=<slug>` on any static server.
+  Slug tokens (`strawberry-sleep`) are order-insensitive and unknown tokens are ignored, so
+  links never break as parts are added. Hash was rejected: fragments never reach the server,
+  which would make per-pet OG previews impossible later.
+- **2026-07-14 — Sleep stays subtle.** A 4-second breathing loop reuses the procedural body
+  deformation at lower amplitude, with closed eyes and one drifting pixel Z. The mode becomes
+  a static sleeping pose when reduced motion is requested; poking the jelly wakes it.
 
 ## Character spec (spike)
 
@@ -72,7 +84,7 @@ Tone/presentation reference:
 ## v1 scope (post-spike)
 
 Customization (flavors → accessories → expressions) · 3 animations (idle / boing / sleep) ·
-GIF export (gifenc or similar, client-side) · deploy to Vercel.
+client-side GIF export · deploy to Vercel.
 
 **Not doing at v1:** freeform pixel drawing, accounts, shared gallery, sound.
 
@@ -80,5 +92,8 @@ GIF export (gifenc or similar, client-side) · deploy to Vercel.
 
 - [x] Verify the boing + flavor swap feel good in a real browser — boing confirmed 2026-07-14
 - [x] `git init` so editor-buffer accidents can't eat work (one already happened)
-- [ ] GIF export spike — second riskiest bit after character charm
-- [ ] Second animation cycle (sleep: slow breathe + closed eyes + "z" pixels)
+- [x] GIF export spike — 192×192 transparent loop, 17 frames / 1.42 s, ~21 KB; verified in Chrome
+- [x] Second animation cycle — 4-second breathe, closed eyes, drifting Z; verified desktop/mobile
+- [ ] Animation-aware GIF export (idle / boing / sleep)
+- [x] URL state spike — `?p=flavor-mode` synced live + copy-link button; headless-Chrome verified
+- [ ] OG link previews — per-pet HTML meta + PNG image endpoint (both reuse `renderGrid`); needs Vercel functions + `/p/*` rewrite
