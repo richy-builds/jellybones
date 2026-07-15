@@ -1,10 +1,5 @@
 {
   "rewrites": [
-    { "source": "/p/:slug", "destination": "/api/pet-page?p=:slug" },
-    {
-      "source": "/",
-      "has": [{ "type": "query", "key": "p" }],
-      "destination": "/api/pet-page"
-    }
+    { "source": "/p/:slug", "destination": "/api/pet-page?p=:slug" }
   ]
 }

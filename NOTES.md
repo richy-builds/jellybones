@@ -50,6 +50,11 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   encoder, zero new dependencies, and unfurls *animate* where platforms allow it. `bg=1`
   composites onto the page ink because transparent og:images render unpredictably;
   the transparent default is GitHub-README-embeddable — a distribution surface in itself.
+- **2026-07-15 — `?p=` is dev-only; canonical `/p/` on any real host.** Static files beat
+  rewrites on Vercel, so `/?p=<slug>` can never reach `pet-page` and unfurled as the lime
+  default (caught live in Slack). The app now writes `/p/<slug>` to the address bar except
+  on file:// and localhost, so copy-link and address-bar shares always use the form that
+  unfurls. `?p=` still parses on load for old links.
 - **2026-07-15 — Per-pet meta via marker swap.** `/p/:slug` rewrites to `api/pet-page.mjs`,
   which swaps the `<!-- pet-meta -->` block in `index.html` for pet-specific title/OG tags.
   Root `/` stays static.

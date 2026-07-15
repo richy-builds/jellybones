@@ -355,9 +355,14 @@ addEventListener("keydown", (e) => {
 // ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
 function syncURL() {
   const slug = stateSlug(flavor, mode);
-  const target = /\/p\//.test(location.pathname)
-    ? (slug ? `/p/${slug}` : "/")
-    : (slug ? `?p=${slug}` : location.pathname);
+  // Canonical /p/<slug> everywhere it can unfurl: static files beat rewrites on
+  // Vercel, so the ?p= form never reaches pet-page — it survives only for local
+  // dev, where /p/* has no rewrite and would 404 on reload.
+  const local = location.protocol === "file:" ||
+    ["localhost", "127.0.0.1"].includes(location.hostname);
+  const target = local
+    ? (slug ? `?p=${slug}` : location.pathname)
+    : (slug ? `/p/${slug}` : "/");
   try {
     history.replaceState(null, "", target);
   } catch { /* file:// forbids URL rewrites; sharing still works via the copy button */ }
