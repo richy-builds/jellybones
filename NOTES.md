@@ -124,6 +124,9 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   (or "send to <name>" when gifted) takes the full-width milk button; GIF export and the
   emoji pack drop to the secondary pair. Export labels shorten to "<motion> gif" to fit
   the half-width slot.
+- **2026-07-15 — Social previews use 384 px GIFs.** X large-image cards reject the prior
+  288 px rendition (their minimum width is 300 px), so OG/Twitter previews now request
+  `scale=16` while the downloadable and emoji outputs keep their existing dimensions.
 
 ## Character spec (spike)
 

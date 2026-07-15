@@ -26,7 +26,9 @@ export default function handler(req, res) {
       ? `“${note}” — a tiny pixel pet, made just for you. Poke it, send one back.`
       : "Someone made you a tiny pixel pet. Poke it, remix it, send one back.")
     : "Someone made you a tiny pixel pet. Poke it, remix it, export the gif.";
-  const image = `${base}/api/pet-gif?p=${slug}&bg=1&scale=12`;
+  // X large-image cards require an image at least 300px wide. Scale 16 gives
+  // crawlers a compact 384px GIF while the underlying pet remains 24×24.
+  const image = `${base}/api/pet-gif?p=${slug}&bg=1&scale=16`;
   // Default pets have an empty slug; gifts still get a real /p/ path (`flavor`
   // round-trips through parseSlug) so the unfurl stays personal.
   const giftQuery = to ? `?${new URLSearchParams(note ? { to, note } : { to })}` : "";
@@ -41,11 +43,14 @@ export default function handler(req, res) {
     `<meta property="og:url" content="${escape(url)}">`,
     `<meta property="og:image" content="${escape(image)}">`,
     `<meta property="og:image:type" content="image/gif">`,
-    `<meta property="og:image:width" content="288">`,
-    `<meta property="og:image:height" content="288">`,
+    `<meta property="og:image:width" content="384">`,
+    `<meta property="og:image:height" content="384">`,
     `<meta property="og:image:alt" content="${escape(title)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${escape(title)}">`,
+    `<meta name="twitter:description" content="${escape(description)}">`,
     `<meta name="twitter:image" content="${escape(image)}">`,
+    `<meta name="twitter:image:alt" content="${escape(title)}">`,
   ].join("\n");
 
   const html = page.replace(/<!-- pet-meta -->[\s\S]*<!-- \/pet-meta -->/, meta);
