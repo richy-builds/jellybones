@@ -74,6 +74,12 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
 - **2026-07-15 — Copy scrubbed for the public.** "spike 001 · proof of charm" →
   "pixel pet maker"; the footer drops "no sprites". README added with an embedded
   live pet GIF (the transparent `/api/pet-gif` default exists for exactly this).
+- **2026-07-19 — Pets have names; names ride `?name=`, never the slug.** A named pet is a
+  character, not a graphic — attachment is what makes people post it where strangers see
+  it. Free text follows the gift-field pattern (shared `cleanText` in the core, 16-char
+  cap, sanitized identically by page and pet-page so the nameplate matches the unfurl).
+  Named pets unfurl as "Boba the winking blueberry jelly"; exports and Slack emoji
+  filenames take the name (`:boba-boing:`), which is the distribution surface talking.
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records

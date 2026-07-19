@@ -104,6 +104,15 @@
     image-rendering: pixelated;
   }
   .caption { font-size: 12px; color: var(--dim); letter-spacing: 0.08em; }
+  .pet-name {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: -8px; /* snug against the caption below it */
+    overflow-wrap: anywhere;
+  }
+  .pet-name[hidden] { display: none; }
   .gift-tag {
     display: flex;
     flex-direction: column;
@@ -374,11 +383,18 @@
       <button class="stage" id="stage" aria-label="poke the jelly">
         <canvas id="pet" width="336" height="336"></canvas>
       </button>
+      <div class="pet-name" id="pet-name" hidden></div>
       <div class="caption" id="caption">poke the jelly</div>
       <button class="gift-back" id="gift-back" type="button" hidden>send one back ♥</button>
     </section>
     <section class="customize" aria-labelledby="customize-title">
       <h2 class="customize-title" id="customize-title">customize</h2>
+      <div class="setting">
+        <div class="setting-label" id="name-label">name</div>
+        <input class="gift-input" id="name-input" type="text" maxlength="16"
+          placeholder="name your pet" aria-label="pet name"
+          autocomplete="off" spellcheck="false">
+      </div>
       <div class="setting">
         <div class="setting-label" id="flavor-label">flavor</div>
         <div class="flavors" id="flavors" role="group" aria-labelledby="flavor-label"></div>
@@ -417,8 +433,8 @@
 
 <script type="module">
 import {
-  BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS,
-  cleanGift, makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
+  BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS, NAME_MAX,
+  cleanGift, cleanText, makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
 } from "/jelly-core.mjs";
 
 const SCALE = 14;
@@ -604,7 +620,7 @@ exportButton.addEventListener("click", async () => {
     const name = petName(mode);
     const grids = modeGrids(mode, face);
     const blob = new Blob([makeGif(grids, flavor)], { type: "image/gif" });
-    downloadBlob(blob, `jellybones-${name}.gif`);
+    downloadBlob(blob, `${fileSafeName() || "jellybones"}-${name}.gif`);
     exportStatus.textContent = `${name} exported · ${Math.ceil(blob.size / 1024)} KB`;
   } catch (error) {
     console.error(error);
@@ -624,12 +640,14 @@ packButton.addEventListener("click", async () => {
   exportStatus.textContent = "Building emoji pack…";
   try {
     await new Promise((resolve) => requestAnimationFrame(resolve));
+    // Filenames become Slack emoji names — a named pet ships as :boba-boing:.
+    const emojiBase = fileSafeName();
     const files = ["idle", "boing", "sleep"].map((m) => ({
-      name: `jelly-${petName(m)}.gif`,
+      name: emojiBase ? `${emojiBase}-${MODE_LABELS[m]}.gif` : `jelly-${petName(m)}.gif`,
       data: makeGif(modeGrids(m, face), flavor, { scale: 5 }),
     }));
     const blob = new Blob([makeZip(files)], { type: "application/zip" });
-    downloadBlob(blob, `jellybones-${flavor}-emoji.zip`);
+    downloadBlob(blob, `jellybones-${emojiBase || flavor}-emoji.zip`);
     exportStatus.textContent =
       `emoji pack · ${Math.ceil(blob.size / 1024)} KB · upload each gif as a Slack emoji`;
   } catch (error) {
@@ -653,6 +671,7 @@ addEventListener("keydown", (e) => {
 function syncURL() {
   const slug = stateSlug(flavor, mode, face);
   const { to, note } = gift();
+  const name = petDisplayName();
   const params = new URLSearchParams();
   // Canonical /p/<slug> everywhere it can unfurl: static files beat rewrites on
   // Vercel, so the ?p= form never reaches pet-page — it survives only for local
@@ -660,13 +679,14 @@ function syncURL() {
   const local = location.protocol === "file:" ||
     ["localhost", "127.0.0.1"].includes(location.hostname);
   if (local && slug) params.set("p", slug);
+  if (name) params.set("name", name);
   if (to) params.set("to", to);
   if (to && note) params.set("note", note);
-  // Gifted default pets still get a real /p/ path (`flavor` round-trips through
-  // parseSlug) so the unfurl can be addressed to the recipient.
+  // Gifted or named default pets still get a real /p/ path (`flavor` round-trips
+  // through parseSlug) so the unfurl can carry the name/recipient.
   const path = local
     ? location.pathname
-    : (slug ? `/p/${slug}` : (to ? `/p/${flavor}` : "/"));
+    : (slug ? `/p/${slug}` : (to || name ? `/p/${flavor}` : "/"));
   const query = params.toString();
   try {
     history.replaceState(null, "", query ? `${path}?${query}` : path);
@@ -693,9 +713,12 @@ shareButton.addEventListener("click", async () => {
   const nativeShare = typeof navigator.share === "function" && isMobile();
   try {
     if (nativeShare) {
+      const name = petDisplayName();
       await navigator.share({
         title: "jellybones",
-        text: to ? `a tiny jelly pet for ${to}` : "meet my tiny jelly pet",
+        text: to
+          ? `a tiny jelly pet for ${to}`
+          : (name ? `meet ${name}, my tiny jelly pet` : "meet my tiny jelly pet"),
         url: location.href,
       });
       shareButton.textContent = "shared!";
@@ -729,6 +752,21 @@ shareButton.addEventListener("click", async () => {
 // while composing: the sender sees exactly what the recipient will.
 const giftToInput = document.getElementById("gift-to-input");
 const giftNoteInput = document.getElementById("gift-note-input");
+
+// Pet name: free text like the gift fields — rides ?name=, never the slug.
+// Naming turns a graphic into a character; the nameplate sits under the stage.
+const nameInput = document.getElementById("name-input");
+const petNameEl = document.getElementById("pet-name");
+const petDisplayName = () => cleanText(nameInput.value, NAME_MAX);
+// Filename-safe form: any-script letters/digits survive, everything else → dash.
+const fileSafeName = () =>
+  petDisplayName().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+
+function renderName() {
+  const name = petDisplayName();
+  petNameEl.hidden = !name;
+  petNameEl.textContent = name;
+}
 const giftTag = document.getElementById("gift-tag");
 const giftToEl = document.getElementById("gift-to");
 const giftNoteEl = document.getElementById("gift-note");
@@ -775,9 +813,10 @@ function recordSent() {
 }
 
 let giftURLTimer;
-[giftToInput, giftNoteInput].forEach((input) => {
+[nameInput, giftToInput, giftNoteInput].forEach((input) => {
   input.addEventListener("input", () => {
     renderGift();
+    renderName();
     // Debounced: Safari rate-limits replaceState; per-keystroke sync would trip it.
     clearTimeout(giftURLTimer);
     giftURLTimer = setTimeout(() => { syncURL(); recordSent(); }, 400);
@@ -800,7 +839,9 @@ const startSlug = location.pathname.match(/\/p\/([a-z-]+)/i)?.[1] ?? startParams
 const arrivedGift = cleanGift({ to: startParams.get("to"), note: startParams.get("note") });
 giftToInput.value = arrivedGift.to;
 giftNoteInput.value = arrivedGift.note;
+nameInput.value = cleanText(startParams.get("name"), NAME_MAX);
 renderGift();
+renderName();
 if (startSlug) applySlug(startSlug);
 if (arrivedGift.to) {
   // Arrival treatment only for gifts NOT composed on this device.
@@ -808,6 +849,8 @@ if (arrivedGift.to) {
     giftBackButton.hidden = false;
     caption.textContent = "someone made this for you";
   }
+}
+if (arrivedGift.to || petDisplayName()) {
   syncURL(); // normalize the arrival URL (sanitized fields, canonical /p/ path)
 }
 </script>

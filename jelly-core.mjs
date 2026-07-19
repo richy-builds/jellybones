@@ -302,11 +302,15 @@ export function stateSlug(flavor, mode, face = DEFAULT_PET.face) {
 // and pet-page share this cleaner so the tag the recipient sees matches the unfurl.
 // An empty `to` means "not a gift"; a note without a recipient is ignored.
 export const GIFT_MAX = { to: 24, note: 80 };
+export const NAME_MAX = 16;
+
+// Shared free-text cleaner: strip control chars, collapse whitespace, cap length.
+export function cleanText(value, max) {
+  return String(value ?? "").replace(/\p{C}/gu, " ").replace(/\s+/g, " ").trim().slice(0, max);
+}
 
 export function cleanGift({ to, note } = {}) {
-  const clean = (value, max) =>
-    String(value ?? "").replace(/\p{C}/gu, " ").replace(/\s+/g, " ").trim().slice(0, max);
-  const gift = { to: clean(to, GIFT_MAX.to), note: clean(note, GIFT_MAX.note) };
+  const gift = { to: cleanText(to, GIFT_MAX.to), note: cleanText(note, GIFT_MAX.note) };
   if (!gift.to) gift.note = "";
   return gift;
 }
