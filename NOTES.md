@@ -88,6 +88,12 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   Uniqueness math: 45 combos → 450; "my pet" has to be plausibly unique before
   name-seeding can land. `modeGrids(mode, face)` became `modeGrids(mode, opts)` before
   its args hit three.
+- **2026-07-19 — Name-seeding is FNV-1a in the core, revealed with a boing.** "✨ pet
+  from your name" hashes the normalized name into flavor/face/accessory (150 outcomes,
+  verified evenly distributed and fully reachable). Determinism is the product: the same
+  name divines the same jelly on anyone's machine, so shared results are provably "yours"
+  and every share is an implicit prompt to try your own. Deliberately client-only — no
+  new endpoint; a seeded pet is just state, and the existing share/unfurl loop carries it.
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records

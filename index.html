@@ -174,6 +174,24 @@
   }
   .gift-input::placeholder { color: var(--dim); opacity: 0.8; }
   .gift-input:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
+  .seed-button {
+    align-self: flex-start;
+    min-height: 36px;
+    padding: 0 2px;
+    border: 0;
+    background: none;
+    color: var(--dim);
+    cursor: pointer;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .seed-button:hover { color: var(--milk); }
+  .seed-button:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
   .customize {
     display: flex;
     flex-direction: column;
@@ -395,6 +413,7 @@
         <input class="gift-input" id="name-input" type="text" maxlength="16"
           placeholder="name your pet" aria-label="pet name"
           autocomplete="off" spellcheck="false">
+        <button class="seed-button" id="seed" type="button">✨ pet from your name</button>
       </div>
       <div class="setting">
         <div class="setting-label" id="flavor-label">flavor</div>
@@ -439,7 +458,7 @@
 <script type="module">
 import {
   ACCESSORIES, BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS, NAME_MAX,
-  cleanGift, cleanText, makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
+  cleanGift, cleanText, makeGif, makeZip, modeGrids, parseSlug, renderGrid, seedPet, stateSlug,
 } from "/jelly-core.mjs";
 
 const SCALE = 14;
@@ -808,6 +827,27 @@ function renderName() {
   petNameEl.hidden = !name;
   petNameEl.textContent = name;
 }
+
+// "What's your jellybone?" — the typed name deterministically divines a pet.
+// Same name, same jelly, on anyone's machine: that's what makes people compare.
+const seedButton = document.getElementById("seed");
+seedButton.addEventListener("click", () => {
+  const name = petDisplayName();
+  if (!name) {
+    nameInput.focus();
+    exportStatus.textContent = "type a name first — the bones need something to read";
+    return;
+  }
+  const pet = seedPet(name);
+  setFlavor(pet.flavor);
+  setFace(pet.face);
+  setAccessory(pet.accessory);
+  if (mode === "sleep") setMode(pet.mode); // wake up for the reveal
+  boing(); // the reveal moment
+  caption.textContent = "the bones have spoken";
+  exportStatus.textContent = "";
+  syncURL();
+});
 const giftTag = document.getElementById("gift-tag");
 const giftToEl = document.getElementById("gift-to");
 const giftNoteEl = document.getElementById("gift-note");
