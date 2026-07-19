@@ -9,8 +9,15 @@ export const FLAVORS = {
   lime:       { B: "#7fd348", O: "#35771f", L: "#a6e87d", S: "#e9ffd2", glow: "rgba(127,211,72,.16)" },
   strawberry: { B: "#f25d7e", O: "#99284d", L: "#f78ba4", S: "#ffdce6", glow: "rgba(242,93,126,.16)" },
   blueberry:  { B: "#5c6ce8", O: "#2c3494", L: "#8b97f2", S: "#d6dbff", glow: "rgba(92,108,232,.18)" },
+  grape:      { B: "#a25de0", O: "#5b2b8f", L: "#c18bef", S: "#eed9ff", glow: "rgba(162,93,224,.18)" },
+  peach:      { B: "#f2985d", O: "#995128", L: "#f7bd8b", S: "#ffeadc", glow: "rgba(242,152,93,.16)" },
+  banana:     { B: "#eed655", O: "#94802a", L: "#f5e48c", S: "#fdf8d8", glow: "rgba(238,214,85,.16)" },
 };
-export const COMMON = { N: "#f6eedc", E: "#221a38", M: "#221a38", C: "#ee86ae", H: "#0d0a1c" };
+// R/Y/G are accessory colors — flavor-independent like the bone's N.
+export const COMMON = {
+  N: "#f6eedc", E: "#221a38", M: "#221a38", C: "#ee86ae", H: "#0d0a1c",
+  R: "#e0453a", Y: "#f7c948", G: "#3f9142",
+};
 
 function shapeHW(u) {
   // Circular dome over the top 70%, straight sides down to the base.
@@ -20,10 +27,39 @@ function shapeHW(u) {
   return Math.sqrt(Math.max(0, 1 - q * q));
 }
 
+// Accessories are hand-placed pixels anchored to the head apex — [x, dy, color]
+// with dy relative to the top body row, so they ride every squash for free.
+// They live above the outline (the bottom row may replace it — "worn", not
+// "floating") and clip at the canvas edge on extreme boing frames, gracefully.
+const ACCESSORY_PIXELS = {
+  bow: [
+    [9, -2, "R"], [10, -2, "R"], [13, -2, "R"], [14, -2, "R"],
+    [10, -1, "R"], [11, -1, "R"], [12, -1, "R"], [13, -1, "R"],
+  ],
+  sprout: [
+    [9, -2, "G"], [10, -2, "G"], [12, -2, "G"], [13, -2, "G"],
+    [11, -1, "G"], [11, 0, "G"],
+  ],
+  crown: [
+    [9, -2, "Y"], [11, -2, "Y"], [12, -2, "Y"], [14, -2, "Y"],
+    [9, -1, "Y"], [10, -1, "Y"], [11, -1, "Y"], [12, -1, "Y"], [13, -1, "Y"], [14, -1, "Y"],
+    [10, 0, "Y"], [11, 0, "Y"], [12, 0, "Y"], [13, 0, "Y"],
+  ],
+  party: [
+    [11, -3, "Y"], [12, -3, "Y"],
+    [11, -2, "R"], [12, -2, "R"],
+    [10, -1, "R"], [11, -1, "R"], [12, -1, "R"], [13, -1, "R"],
+    [9, 0, "R"], [10, 0, "R"], [11, 0, "R"], [12, 0, "R"], [13, 0, "R"], [14, 0, "R"],
+  ],
+};
+
 // Pure frame renderer: squash, lift, and frame options → palette-key grid.
-// opts: { blink, mouthOpen, sleepProgress, face }
+// opts: { blink, mouthOpen, sleepProgress, face, accessory }
 export function renderGrid(s, lift, opts = {}) {
-  const { blink = false, mouthOpen = false, sleepProgress = null, face = "happy" } = opts;
+  const {
+    blink = false, mouthOpen = false, sleepProgress = null,
+    face = "happy", accessory = "none",
+  } = opts;
   const h = BASE_H * s;
   const rx = BASE_RX / Math.sqrt(s);
   const base = GROUND - lift;
@@ -96,6 +132,13 @@ export function renderGrid(s, lift, opts = {}) {
   }
   if (face !== "love") { put(7, eyeY + 1, "C"); put(16, eyeY + 1, "C"); }
 
+  // Accessory rides the head apex: hy is the first body row (y > topY - 0.5).
+  if (ACCESSORY_PIXELS[accessory]) {
+    const hy = Math.round(topY);
+    for (const [x, dy, c] of ACCESSORY_PIXELS[accessory])
+      if (g[hy + dy]?.[x] !== undefined) g[hy + dy][x] = c;
+  }
+
   // A tiny Z drifts up beside the sleeping jelly, then loops back to its cheek.
   if (sleepProgress !== null && sleepProgress < 0.82) {
     const zX = 18 + Math.floor(sleepProgress * 2);
@@ -120,7 +163,7 @@ export function renderGrid(s, lift, opts = {}) {
 }
 
 function gifPalette(flavorName) {
-  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H"];
+  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H", "R", "Y", "G"];
   const palette = { ...COMMON, ...FLAVORS[flavorName] };
   const rgb = colors.map((key) => {
     if (!key) return [0, 0, 0];
@@ -256,28 +299,30 @@ export const BOING_LOOP = [...BOING, ...Array.from({ length: BOING_REST }, () =>
 export const IDLE_FRAMES = 17;
 export const SLEEP_FRAMES = FPS * 4;
 
-export function modeGrids(mode, face = "happy") {
+export function modeGrids(mode, { face = "happy", accessory = "none" } = {}) {
   if (mode === "sleep") {
     return Array.from({ length: SLEEP_FRAMES }, (_, frame) => {
       const progress = frame / SLEEP_FRAMES;
-      // Sleep is one complete pose; the saved awake expression is intentionally ignored.
+      // Sleep is one complete pose; the saved awake expression is intentionally
+      // ignored — but the accessory stays on (you sleep in your crown).
       return renderGrid(1 + 0.04 * Math.sin(2 * Math.PI * progress), 0,
-        { blink: true, sleepProgress: progress });
+        { blink: true, sleepProgress: progress, accessory });
     });
   }
   if (mode === "boing") {
     return BOING_LOOP.map(([s, lift, mo]) =>
-      renderGrid(s, lift, { mouthOpen: !!mo, face }));
+      renderGrid(s, lift, { mouthOpen: !!mo, face, accessory }));
   }
   return Array.from({ length: IDLE_FRAMES }, (_, frame) =>
-    renderGrid(1 + 0.055 * Math.sin((2 * Math.PI * frame) / IDLE_FRAMES), 0, { face }));
+    renderGrid(1 + 0.055 * Math.sin((2 * Math.PI * frame) / IDLE_FRAMES), 0, { face, accessory }));
 }
 
 // Slug codec. Tokens are order-insensitive and unknown tokens are ignored, so
 // links never break as parts are added — a bad link degrades to the default pet.
 export const MODES = ["idle", "boing", "sleep"];
 export const FACES = ["happy", "wink", "ooh", "grump", "love"];
-export const DEFAULT_PET = { flavor: "lime", mode: "idle", face: "happy" };
+export const ACCESSORIES = ["bow", "sprout", "crown", "party"];
+export const DEFAULT_PET = { flavor: "lime", mode: "idle", face: "happy", accessory: "none" };
 
 export function parseSlug(slug) {
   const pet = { ...DEFAULT_PET };
@@ -285,14 +330,16 @@ export function parseSlug(slug) {
     if (FLAVORS[token]) pet.flavor = token;
     else if (MODES.includes(token)) pet.mode = token;
     else if (FACES.includes(token)) pet.face = token;
+    else if (ACCESSORIES.includes(token)) pet.accessory = token;
   }
   return pet;
 }
 
-export function stateSlug(flavor, mode, face = DEFAULT_PET.face) {
+export function stateSlug(flavor, mode, face = DEFAULT_PET.face, accessory = DEFAULT_PET.accessory) {
   const tokens = [];
   if (flavor !== DEFAULT_PET.flavor) tokens.push(flavor);
   if (face !== DEFAULT_PET.face) tokens.push(face);
+  if (accessory !== DEFAULT_PET.accessory) tokens.push(accessory);
   if (mode !== DEFAULT_PET.mode) tokens.push(mode);
   return tokens.join("-");
 }

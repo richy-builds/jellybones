@@ -80,6 +80,14 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   cap, sanitized identically by page and pet-page so the nameplate matches the unfurl).
   Named pets unfurl as "Boba the winking blueberry jelly"; exports and Slack emoji
   filenames take the name (`:boba-boing:`), which is the distribution surface talking.
+- **2026-07-19 — Accessories are head-apex pixel lists; flavors doubled to six.** One
+  accessory slot (bow/sprout/crown/party), each a hand-placed `[x, dy, color]` list
+  anchored to the top body row so it rides every squash free, clipping gracefully at the
+  boing apex. Head-top mounting was chosen over glasses/held items because it can't
+  collide with faces or blinks. R/Y/G joined `COMMON` (GIF palette now 12 of 16 slots).
+  Uniqueness math: 45 combos → 450; "my pet" has to be plausibly unique before
+  name-seeding can land. `modeGrids(mode, face)` became `modeGrids(mode, opts)` before
+  its args hit three.
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records

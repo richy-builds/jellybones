@@ -9,10 +9,11 @@ const escape = (text) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").rep
 
 const FACE_ADJ = { wink: "winking", ooh: "surprised", grump: "grumpy", love: "lovestruck" };
 const MODE_PHRASE = { sleep: ", sleeping", boing: ", mid-boing" };
+const ACC_PHRASE = { bow: " in a bow", sprout: " with a sprout", crown: " in a tiny crown", party: " in a party hat" };
 
 export default function handler(req, res) {
-  const { flavor, mode, face } = parseSlug(req.query.p);
-  const slug = stateSlug(flavor, mode, face);
+  const { flavor, mode, face, accessory } = parseSlug(req.query.p);
+  const slug = stateSlug(flavor, mode, face, accessory);
   const { to, note } = cleanGift(req.query);
   const name = cleanText(req.query.name, NAME_MAX);
   const host = req.headers["x-forwarded-host"] ?? req.headers.host ?? "jellybones.vercel.app";
@@ -20,12 +21,12 @@ export default function handler(req, res) {
   const adjective = mode !== "sleep" && FACE_ADJ[face] ? `${FACE_ADJ[face]} ` : "";
   // Named pets unfurl as characters; gifted links unfurl addressed to the
   // recipient; the note becomes the description.
-  const jelly = `a ${adjective}${flavor} jelly`;
+  const jelly = `${adjective}${flavor} jelly${ACC_PHRASE[accessory] ?? ""}`;
   const title = to
-    ? `${name ? `${name}, ${jelly}` : jelly} for ${to} · jellybones`
+    ? `${name ? `${name}, a ${jelly}` : `a ${jelly}`} for ${to} · jellybones`
     : (name
-      ? `${name} the ${adjective}${flavor} jelly${MODE_PHRASE[mode] ?? ""} · jellybones`
-      : `${jelly}${MODE_PHRASE[mode] ?? ""} · jellybones`);
+      ? `${name} the ${jelly}${MODE_PHRASE[mode] ?? ""} · jellybones`
+      : `a ${jelly}${MODE_PHRASE[mode] ?? ""} · jellybones`);
   const description = to
     ? (note
       ? `“${note}” — a tiny pixel pet, made just for you. Poke it, send one back.`

@@ -273,7 +273,8 @@
   .animation:hover { color: var(--milk); }
   .animation[aria-pressed="true"] { background: var(--dim); color: var(--ink); }
   .animation:focus-visible { outline: 2px solid var(--milk); outline-offset: 2px; }
-  .flavors { display: flex; justify-content: space-between; gap: 8px; width: 100%; }
+  /* Two rows of three: six flavors in one flex row would crush the labels. */
+  .flavors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
   .flavor {
     display: flex;
     flex-direction: column;
@@ -404,6 +405,10 @@
         <div class="faces" id="faces" role="group" aria-labelledby="face-label"></div>
       </div>
       <div class="setting">
+        <div class="setting-label" id="accessory-label">extra</div>
+        <div class="faces" id="accessories" role="group" aria-labelledby="accessory-label"></div>
+      </div>
+      <div class="setting">
         <div class="setting-label" id="motion-label">motion</div>
         <div class="animations" id="animations" role="group" aria-labelledby="motion-label">
           <button class="animation" type="button" data-mode="idle" aria-pressed="true">wobble</button>
@@ -433,7 +438,7 @@
 
 <script type="module">
 import {
-  BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS, NAME_MAX,
+  ACCESSORIES, BOING, BOING_LOOP, COMMON, FACES, FLAVORS, GRID, FPS, NAME_MAX,
   cleanGift, cleanText, makeGif, makeZip, modeGrids, parseSlug, renderGrid, stateSlug,
 } from "/jelly-core.mjs";
 
@@ -450,6 +455,7 @@ const MODE_LABELS = { idle: "wobble", boing: "boing", sleep: "sleep" };
 
 let flavor = "lime";
 let face = "happy";
+let accessory = "none";
 
 function draw(g, target = ctx, scale = SCALE, crop = FULL_GRID) {
   const pal = { ...COMMON, ...FLAVORS[flavor] };
@@ -486,7 +492,8 @@ function frame(now) {
       const sleepTick = Math.max(0, tick - modeAt) % SLEEP_TICKS;
       const sleepProgress = sleepTick / SLEEP_TICKS;
       const s = reducedMotion ? 1 : 1 + 0.04 * Math.sin(2 * Math.PI * sleepProgress);
-      draw(renderGrid(s, 0, { blink: true, sleepProgress: reducedMotion ? 0.25 : sleepProgress }));
+      draw(renderGrid(s, 0,
+        { blink: true, sleepProgress: reducedMotion ? 0.25 : sleepProgress, accessory }));
     } else {
       // Boing mode loops the shared schedule; idle plays it once per click.
       let squash = 1, lift = 0, mouthOpen = 0;
@@ -496,7 +503,7 @@ function frame(now) {
       if (step) [squash, lift, mouthOpen] = step;
       else if (!reducedMotion && mode === "idle")
         squash = 1 + 0.055 * Math.sin((2 * Math.PI * tick) / (FPS * 1.4));
-      draw(renderGrid(squash, lift, { blink, mouthOpen: !!mouthOpen, face }));
+      draw(renderGrid(squash, lift, { blink, mouthOpen: !!mouthOpen, face, accessory }));
     }
   }
   requestAnimationFrame(frame);
@@ -569,6 +576,37 @@ function setFace(name) {
   syncURL();
 }
 
+// Accessory picker — same pattern as faces, cropped to the head top.
+const ACC_CROP = { x: 5, y: 2, width: 14, height: 8 };
+const accessoriesEl = document.getElementById("accessories");
+["none", ...ACCESSORIES].forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "face-choice";
+  b.type = "button";
+  b.dataset.accessory = name;
+  b.setAttribute("aria-pressed", String(name === accessory));
+  b.innerHTML = `<canvas class="face-preview" width="${ACC_CROP.width * FACE_SCALE}" height="${ACC_CROP.height * FACE_SCALE}" aria-hidden="true"></canvas><span>${name}</span>`;
+  b.addEventListener("click", () => setAccessory(name));
+  accessoriesEl.appendChild(b);
+});
+
+function drawAccessoryPreviews() {
+  [...accessoriesEl.children].forEach((b) => {
+    const preview = b.querySelector("canvas").getContext("2d");
+    draw(renderGrid(1, 0, { accessory: b.dataset.accessory }), preview, FACE_SCALE, ACC_CROP);
+  });
+}
+drawAccessoryPreviews();
+
+function setAccessory(name) {
+  accessory = name;
+  [...accessoriesEl.children].forEach((b) => {
+    b.setAttribute("aria-pressed", String(b.dataset.accessory === accessory));
+  });
+  lastTick = -1; // repaint on next frame
+  syncURL();
+}
+
 // Flavor swatches + 1/2/3 keys.
 const flavorsEl = document.getElementById("flavors");
 Object.entries(FLAVORS).forEach(([name, f], i) => {
@@ -589,6 +627,7 @@ function setFlavor(name) {
     b.setAttribute("aria-pressed", String(Object.keys(FLAVORS)[i] === name));
   });
   drawFacePreviews();
+  drawAccessoryPreviews();
   lastTick = -1; // repaint on next frame
   syncURL();
 }
@@ -608,6 +647,7 @@ function downloadBlob(blob, filename) {
 const petName = (forMode) => [
   flavor,
   forMode !== "sleep" && face !== "happy" ? face : null,
+  accessory !== "none" ? accessory : null,
   MODE_LABELS[forMode],
 ].filter(Boolean).join("-");
 
@@ -618,7 +658,7 @@ exportButton.addEventListener("click", async () => {
   try {
     await new Promise((resolve) => requestAnimationFrame(resolve));
     const name = petName(mode);
-    const grids = modeGrids(mode, face);
+    const grids = modeGrids(mode, { face, accessory });
     const blob = new Blob([makeGif(grids, flavor)], { type: "image/gif" });
     downloadBlob(blob, `${fileSafeName() || "jellybones"}-${name}.gif`);
     exportStatus.textContent = `${name} exported · ${Math.ceil(blob.size / 1024)} KB`;
@@ -644,7 +684,7 @@ packButton.addEventListener("click", async () => {
     const emojiBase = fileSafeName();
     const files = ["idle", "boing", "sleep"].map((m) => ({
       name: emojiBase ? `${emojiBase}-${MODE_LABELS[m]}.gif` : `jelly-${petName(m)}.gif`,
-      data: makeGif(modeGrids(m, face), flavor, { scale: 5 }),
+      data: makeGif(modeGrids(m, { face, accessory }), flavor, { scale: 5 }),
     }));
     const blob = new Blob([makeZip(files)], { type: "application/zip" });
     downloadBlob(blob, `jellybones-${emojiBase || flavor}-emoji.zip`);
@@ -669,7 +709,7 @@ addEventListener("keydown", (e) => {
 // works on any static server. Slug tokens are order-insensitive and unknown tokens are
 // ignored, so links stay valid as parts are added — a bad link degrades to the default pet.
 function syncURL() {
-  const slug = stateSlug(flavor, mode, face);
+  const slug = stateSlug(flavor, mode, face, accessory);
   const { to, note } = gift();
   const name = petDisplayName();
   const params = new URLSearchParams();
@@ -697,6 +737,7 @@ function applySlug(slug) {
   const pet = parseSlug(slug);
   setFlavor(pet.flavor);
   setFace(pet.face);
+  setAccessory(pet.accessory);
   setMode(pet.mode);
 }
 
