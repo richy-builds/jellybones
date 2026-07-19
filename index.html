@@ -235,6 +235,9 @@
     background: none;
   }
   .faces[hidden] { display: none; }
+  /* 14 wardrobe options: a grid, not a flex row — flex:1 children shrink to
+     slivers instead of wrapping. Five per row matches the face-portrait size. */
+  #accessories { display: grid; grid-template-columns: repeat(5, 1fr); }
   .face-choice {
     display: flex;
     flex-direction: column;
@@ -384,6 +387,7 @@
     .face-preview { width: 48px; }
     .flavors { gap: 2px; }
     .flavor { min-width: 0; padding-inline: 2px; font-size: 9px; letter-spacing: 0.08em; }
+    #accessories { grid-template-columns: repeat(4, 1fr); }
   }
 </style>
 </head>

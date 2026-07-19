@@ -9,7 +9,12 @@ const escape = (text) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").rep
 
 const FACE_ADJ = { wink: "winking", ooh: "surprised", grump: "grumpy", love: "lovestruck" };
 const MODE_PHRASE = { sleep: ", sleeping", boing: ", mid-boing" };
-const ACC_PHRASE = { bow: " in a bow", sprout: " with a sprout", crown: " in a tiny crown", party: " in a party hat" };
+const ACC_PHRASE = {
+  bow: " in a bow", sprout: " with a sprout", crown: " in a tiny crown", party: " in a party hat",
+  halo: " with a halo", flower: " with a flower", cherry: " with a cherry on top",
+  ears: " with bunny ears", cowboy: " in a cowboy hat", mushroom: " in a mushroom cap",
+  antenna: " with an antenna", egg: " in an eggshell", star: " with a star",
+};
 
 export default function handler(req, res) {
   const { flavor, mode, face, accessory } = parseSlug(req.query.p);

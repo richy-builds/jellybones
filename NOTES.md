@@ -94,6 +94,16 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   name divines the same jelly on anyone's machine, so shared results are provably "yours"
   and every share is an implicit prompt to try your own. Deliberately client-only — no
   new endpoint; a seeded pet is just state, and the existing share/unfurl loop carries it.
+- **2026-07-19 — Wardrobe to 13; the seed pool is frozen.** Nine more accessories
+  (halo/flower/cherry/ears/cowboy/mushroom/antenna/egg/star) in the same head-apex pixel
+  system; only the cowboy needed a new palette slot (`T` tan — 13 of 16 GIF slots used).
+  `seedPet` now draws from frozen `SEED_*` snapshot lists, not the live ones: growing
+  `FLAVORS`/`ACCESSORIES` later must never reshuffle a seeded pet someone already shared.
+  New parts stay makeable and shareable but not seedable unless the seed algorithm is
+  deliberately re-versioned; golden name→pet mappings in `verify.mjs` hold the line.
+  The extra picker became a CSS grid — 14 `flex: 1` children shrink to slivers instead
+  of wrapping. (Also learned: headless Chrome clamps windows to 500px wide; screenshot
+  narrow layouts inside a fixed-width iframe.)
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records

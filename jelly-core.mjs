@@ -13,10 +13,10 @@ export const FLAVORS = {
   peach:      { B: "#f2985d", O: "#995128", L: "#f7bd8b", S: "#ffeadc", glow: "rgba(242,152,93,.16)" },
   banana:     { B: "#eed655", O: "#94802a", L: "#f5e48c", S: "#fdf8d8", glow: "rgba(238,214,85,.16)" },
 };
-// R/Y/G are accessory colors — flavor-independent like the bone's N.
+// R/Y/G/T are accessory colors — flavor-independent like the bone's N.
 export const COMMON = {
   N: "#f6eedc", E: "#221a38", M: "#221a38", C: "#ee86ae", H: "#0d0a1c",
-  R: "#e0453a", Y: "#f7c948", G: "#3f9142",
+  R: "#e0453a", Y: "#f7c948", G: "#3f9142", T: "#a5692f",
 };
 
 function shapeHW(u) {
@@ -50,6 +50,49 @@ const ACCESSORY_PIXELS = {
     [11, -2, "R"], [12, -2, "R"],
     [10, -1, "R"], [11, -1, "R"], [12, -1, "R"], [13, -1, "R"],
     [9, 0, "R"], [10, 0, "R"], [11, 0, "R"], [12, 0, "R"], [13, 0, "R"], [14, 0, "R"],
+  ],
+  halo: [
+    [10, -3, "Y"], [11, -3, "Y"], [12, -3, "Y"], [13, -3, "Y"],
+    [9, -2, "Y"], [14, -2, "Y"],
+  ],
+  flower: [
+    [9, -2, "C"],
+    [8, -1, "C"], [9, -1, "Y"], [10, -1, "C"],
+    [9, 0, "C"],
+  ],
+  cherry: [
+    [13, -3, "G"], [12, -2, "G"],
+    [11, -1, "R"], [12, -1, "R"],
+    [11, 0, "R"], [12, 0, "R"],
+  ],
+  ears: [
+    [9, -3, "N"], [10, -3, "N"], [13, -3, "N"], [14, -3, "N"],
+    [9, -2, "N"], [10, -2, "C"], [13, -2, "C"], [14, -2, "N"],
+    [9, -1, "N"], [10, -1, "N"], [13, -1, "N"], [14, -1, "N"],
+  ],
+  cowboy: [
+    [10, -2, "T"], [11, -2, "T"], [12, -2, "T"], [13, -2, "T"],
+    [8, -1, "T"], [10, -1, "T"], [11, -1, "T"], [12, -1, "T"], [13, -1, "T"], [15, -1, "T"], // brim ends curl up
+    [8, 0, "T"], [9, 0, "T"], [10, 0, "T"], [11, 0, "T"], [12, 0, "T"], [13, 0, "T"], [14, 0, "T"], [15, 0, "T"],
+  ],
+  mushroom: [
+    [10, -2, "R"], [11, -2, "R"], [12, -2, "R"], [13, -2, "R"],
+    [9, -1, "R"], [10, -1, "R"], [11, -1, "R"], [12, -1, "R"], [13, -1, "R"], [14, -1, "R"],
+    [11, -2, "N"], [13, -1, "N"], [9, -1, "N"], // spots layer over the cap
+  ],
+  antenna: [
+    [11, -3, "Y"], [12, -3, "Y"],
+    [11, -2, "N"], [11, -1, "N"], [11, 0, "N"],
+  ],
+  egg: [
+    [10, -2, "N"], [11, -2, "N"], [12, -2, "N"], [13, -2, "N"],
+    [9, -1, "N"], [10, -1, "N"], [12, -1, "N"], [14, -1, "N"], // gaps: the crack
+    [9, 0, "N"], [11, 0, "N"], [13, 0, "N"],
+  ],
+  star: [
+    [11, -3, "Y"], [12, -3, "Y"],
+    [10, -2, "Y"], [11, -2, "Y"], [12, -2, "Y"], [13, -2, "Y"],
+    [11, -1, "Y"], [12, -1, "Y"],
   ],
 };
 
@@ -163,7 +206,7 @@ export function renderGrid(s, lift, opts = {}) {
 }
 
 function gifPalette(flavorName) {
-  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H", "R", "Y", "G"];
+  const colors = [null, "B", "O", "L", "S", "N", "E", "C", "H", "R", "Y", "G", "T"];
   const palette = { ...COMMON, ...FLAVORS[flavorName] };
   const rgb = colors.map((key) => {
     if (!key) return [0, 0, 0];
@@ -321,7 +364,10 @@ export function modeGrids(mode, { face = "happy", accessory = "none" } = {}) {
 // links never break as parts are added — a bad link degrades to the default pet.
 export const MODES = ["idle", "boing", "sleep"];
 export const FACES = ["happy", "wink", "ooh", "grump", "love"];
-export const ACCESSORIES = ["bow", "sprout", "crown", "party"];
+export const ACCESSORIES = [
+  "bow", "sprout", "crown", "party",
+  "halo", "flower", "cherry", "ears", "cowboy", "mushroom", "antenna", "egg", "star",
+];
 export const DEFAULT_PET = { flavor: "lime", mode: "idle", face: "happy", accessory: "none" };
 
 export function parseSlug(slug) {
@@ -366,6 +412,19 @@ export function cleanGift({ to, note } = {}) {
 // comparing get provably "their" pet, which is the whole share hook. FNV-1a
 // over the normalized name; independent bit ranges pick each part so flavors,
 // faces, and accessories mix freely. Mode stays idle: the reveal needs a face.
+//
+// The pools are FROZEN snapshots, not the live lists: growing FLAVORS or
+// ACCESSORIES later must never reshuffle a seed someone already shared
+// ("my jellybone changed!"). New parts stay makeable and shareable but not
+// seedable, unless we deliberately bump the seed algorithm as a versioned
+// decision. verify.mjs pins golden name→pet mappings to hold this line.
+const SEED_FLAVORS = ["lime", "strawberry", "blueberry", "grape", "peach", "banana"];
+const SEED_FACES = ["happy", "wink", "ooh", "grump", "love"];
+const SEED_ACCESSORIES = [
+  "none", "bow", "sprout", "crown", "party",
+  "halo", "flower", "cherry", "ears", "cowboy", "mushroom", "antenna", "egg", "star",
+];
+
 export function seedPet(name) {
   const norm = cleanText(name, NAME_MAX).toLowerCase();
   let h = 0x811c9dc5;
@@ -373,12 +432,10 @@ export function seedPet(name) {
     h ^= char.codePointAt(0); // per code point: emoji names don't split surrogates
     h = Math.imul(h, 0x01000193) >>> 0;
   }
-  const flavors = Object.keys(FLAVORS);
-  const accessories = ["none", ...ACCESSORIES];
   return {
-    flavor: flavors[h % flavors.length],
-    face: FACES[(h >>> 8) % FACES.length],
-    accessory: accessories[(h >>> 16) % accessories.length],
+    flavor: SEED_FLAVORS[h % SEED_FLAVORS.length],
+    face: SEED_FACES[(h >>> 8) % SEED_FACES.length],
+    accessory: SEED_ACCESSORIES[(h >>> 16) % SEED_ACCESSORIES.length],
     mode: "idle",
   };
 }
