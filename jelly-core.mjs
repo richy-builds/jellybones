@@ -467,38 +467,6 @@ export function cleanGift({ to, note } = {}) {
   return gift;
 }
 
-// Name-seeded pets: the same name always divines the same jelly — two people
-// comparing get provably "their" pet, which is the whole share hook. FNV-1a
-// over the normalized name; independent bit ranges pick each part so flavors,
-// faces, and accessories mix freely. Mode stays idle: the reveal needs a face.
-//
-// The pools are FROZEN snapshots, not the live lists: growing FLAVORS or
-// ACCESSORIES later must never reshuffle a seed someone already shared
-// ("my jellybone changed!"). New parts stay makeable and shareable but not
-// seedable, unless we deliberately bump the seed algorithm as a versioned
-// decision. verify.mjs pins golden name→pet mappings to hold this line.
-const SEED_FLAVORS = ["lime", "strawberry", "blueberry", "grape", "peach", "banana"];
-const SEED_FACES = ["happy", "wink", "ooh", "grump", "love"];
-const SEED_ACCESSORIES = [
-  "none", "bow", "sprout", "crown", "party",
-  "halo", "flower", "cherry", "ears", "cowboy", "mushroom", "antenna", "egg", "star",
-];
-
-export function seedPet(name) {
-  const norm = cleanText(name, NAME_MAX).toLowerCase();
-  let h = 0x811c9dc5;
-  for (const char of norm) {
-    h ^= char.codePointAt(0); // per code point: emoji names don't split surrogates
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return {
-    flavor: SEED_FLAVORS[h % SEED_FLAVORS.length],
-    face: SEED_FACES[(h >>> 8) % SEED_FACES.length],
-    accessory: SEED_ACCESSORIES[(h >>> 16) % SEED_ACCESSORIES.length],
-    mode: "idle",
-  };
-}
-
 // Store-only ZIP writer for the emoji pack. GIF payloads are already
 // LZW-compressed, so storing them keeps the container dependency-free
 // without a meaningful size cost.

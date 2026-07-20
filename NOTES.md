@@ -88,7 +88,8 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   Uniqueness math: 45 combos → 450; "my pet" has to be plausibly unique before
   name-seeding can land. `modeGrids(mode, face)` became `modeGrids(mode, opts)` before
   its args hit three.
-- **2026-07-19 — Name-seeding is FNV-1a in the core, revealed with a boing.** "✨ pet
+- **2026-07-19 — Name-seeding is FNV-1a in the core, revealed with a boing.** _[Superseded —
+  removed 2026-07-20; see below.]_ "✨ pet
   from your name" hashes the normalized name into flavor/face/accessory (150 outcomes,
   verified evenly distributed and fully reachable). Determinism is the product: the same
   name divines the same jelly on anyone's machine, so shared results are provably "yours"
@@ -122,6 +123,18 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   a single centred pentagon now, the ⚽ glyph. Unknown tokens degrade gracefully, so
   `…-kickups` links stay valid forever; only the banner auto-expires (`CAMPAIGN_UNTIL`,
   ~3 weeks) and lifts out as one block.
+- **2026-07-20 — Removed name-seeding (kept naming). A hash isn't an identity.** "✨ pet
+  from your name" looked like a "which ___ are you?" viral toy but lacked the ingredient that
+  spreads those: a felt, *legible* link between you and the result. A hash gives determinism
+  ("provably yours") but not meaning ("that's so me"), and meaning is what makes people post —
+  so the mechanic never earned its keep. The clincher was cost, not just weak upside:
+  determinism was the *sole* reason the seed pools had to be FROZEN, which taxed every new
+  part with "is this seedable? will it reshuffle a shared seed?" (felt live when the football
+  had to dodge the pool). Deleting `seedPet`/`SEED_*` + the button collapses that whole class
+  of constraint — parts just get added now, no freeze, fewer tests. Naming stays (a name makes
+  it a character; that one works); old `?p=` links are unaffected (a seeded pet was only ever
+  ordinary state). If analytics ever say it landed, it's cheap to rebuild — ideally with a
+  meaning layer (archetype labels) next time, which is what a hash-only version was missing.
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records
@@ -241,4 +254,6 @@ client-side GIF export · deploy to Vercel.
 - [ ] Paste a gifted link (`/p/...?to=...&note=...`) somewhere real to verify the addressed unfurl
 - [x] World Cup moment — `kickups` juggle mode + red/gold confetti + banner-with-flag +
       date-gated ¡Campeones! preset; football accessory tried and cut (2026-07-20)
+- [x] Removed name-seeding — a hash isn't an identity, and it was the sole source of the
+      frozen seed-pool complexity. Naming kept. (2026-07-20)
 - [ ] After ~2026-08-10: retire the ¡Campeones! banner block (parts stay; links stay valid)
