@@ -8,7 +8,7 @@ const page = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const escape = (text) => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
 const FACE_ADJ = { wink: "winking", ooh: "surprised", grump: "grumpy", love: "lovestruck" };
-const MODE_PHRASE = { sleep: ", sleeping", boing: ", mid-boing" };
+const MODE_PHRASE = { sleep: ", sleeping", boing: ", mid-boing", kickups: ", juggling a ball" };
 const ACC_PHRASE = {
   bow: " in a bow", sprout: " with a sprout", crown: " in a tiny crown", party: " in a party hat",
   halo: " with a halo", flower: " with a flower", cherry: " with a cherry on top",

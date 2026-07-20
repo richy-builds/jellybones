@@ -104,6 +104,24 @@ Avatars in Pixels) all export *static* images. Animated GIF output is the gap Je
   The extra picker became a CSS grid — 14 `flex: 1` children shrink to slivers instead
   of wrapping. (Also learned: headless Chrome clamps windows to 500px wide; screenshot
   narrow layouts inside a fixed-width iframe.)
+- **2026-07-20 — World Cup moment: a `kickups` juggle mode + ¡Campeones! banner.**
+  Spain won the final (2026-07-19), so a timely, viral hook: one new *evergreen* animation
+  (`kickups`) plus one *date-gated* promo (the ¡Campeones! banner → strawberry + kickups +
+  the name, one tap). The ball is a single `BALL` sprite (cream shell + one central `H`
+  pentagon — no new palette slot) drawn flying its own 11-frame arc via a new `renderGrid`
+  `ball` option, independent of the body squash, while the jelly pulses up to *head* it at
+  the loop seam. A red/gold confetti burst pops on the header contact — fixed Spain colours,
+  deliberately NOT flavor-tinted, since the confetti *is* the Spain signal (a green jelly
+  must still throw red/gold); it also reads as generic celebration, so `kickups` stays
+  evergreen. The banner carries a drawn red-yellow-red flag chip, not the 🇪🇸 emoji (which is
+  bare "ES" on Windows Chrome/Edge, and a flat chip suits the pixels anyway). **Tried a
+  `football` head accessory too and cut it:** a ball-on-head plus the juggled ball stacked
+  into a two-ball totem, and "a kickups motion AND a football extra" read as redundant — so
+  the ball lives only as the mode. One scar worth keeping: the ball's first sprite had two
+  symmetric top panels and read as a *skull* (fatal on a project called jellybones), so it's
+  a single centred pentagon now, the ⚽ glyph. Unknown tokens degrade gracefully, so
+  `…-kickups` links stay valid forever; only the banner auto-expires (`CAMPAIGN_UNTIL`,
+  ~3 weeks) and lifts out as one block.
 - **2026-07-15 — Checks live in the repo, not in heads.** `verify.mjs` (plain Node, no
   framework — the core is pure, so nothing else is needed) covers slug round-trips, GIF
   structure, Slack emoji caps, zip CRCs, and mock-tests both functions. `AGENTS.md` records
@@ -221,3 +239,6 @@ client-side GIF export · deploy to Vercel.
       unfurls, "send one back" CTA (2026-07-15)
 - [ ] Paste a `/p/...` link into Slack/iMessage to verify the unfurl renders the pet
 - [ ] Paste a gifted link (`/p/...?to=...&note=...`) somewhere real to verify the addressed unfurl
+- [x] World Cup moment — `kickups` juggle mode + red/gold confetti + banner-with-flag +
+      date-gated ¡Campeones! preset; football accessory tried and cut (2026-07-20)
+- [ ] After ~2026-08-10: retire the ¡Campeones! banner block (parts stay; links stay valid)

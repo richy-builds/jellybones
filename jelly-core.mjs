@@ -27,6 +27,19 @@ function shapeHW(u) {
   return Math.sqrt(Math.max(0, 1 - q * q));
 }
 
+// The soccer ball sprite for the kickups juggle — offsets from its own centre, a
+// cream shell (N) with one near-black centre pentagon (H, already in the palette,
+// so no new slot). A single central panel is the universal ⚽ glyph at this size;
+// two symmetric top spots read as eye-sockets (a skull — doubly wrong on a
+// project called jellybones). It is deliberately NOT a wardrobe accessory: a
+// ball-on-head plus a juggled ball stacked into a two-ball totem.
+const BALL = [
+  [-1, -2, "N"], [0, -2, "N"], [1, -2, "N"],
+  [-2, -1, "N"], [-1, -1, "N"], [0, -1, "H"], [1, -1, "N"], [2, -1, "N"],
+  [-2, 0, "N"], [-1, 0, "H"], [0, 0, "H"], [1, 0, "H"], [2, 0, "N"],
+  [-1, 1, "N"], [0, 1, "H"], [1, 1, "N"],
+];
+
 // Accessories are hand-placed pixels anchored to the head apex — [x, dy, color]
 // with dy relative to the top body row, so they ride every squash for free.
 // They live above the outline (the bottom row may replace it — "worn", not
@@ -101,7 +114,7 @@ const ACCESSORY_PIXELS = {
 export function renderGrid(s, lift, opts = {}) {
   const {
     blink = false, mouthOpen = false, sleepProgress = null,
-    face = "happy", accessory = "none",
+    face = "happy", accessory = "none", ball = null, confetti = null,
   } = opts;
   const h = BASE_H * s;
   const rx = BASE_RX / Math.sqrt(s);
@@ -195,6 +208,22 @@ export function renderGrid(s, lift, opts = {}) {
   put(9, Math.round(topY) + 2, "S");
   put(8, Math.round(topY) + 3, "S");
   put(8, Math.round(topY) + 4, "S");
+
+  // A juggled ball flies its own arc, independent of the squash, drawn over
+  // everything it overlaps (it's in front of the jelly, and lands on its head).
+  if (ball) {
+    for (const [dx, dy, c] of BALL) {
+      const bx = ball.x + dx, by = ball.y + dy;
+      if (g[by]?.[bx] !== undefined) g[by][bx] = c;
+    }
+  }
+
+  // Celebration confetti (the kickups header pop): sparse pixels over the top,
+  // in palette keys so the spray picks up the pet's own flavor plus gold.
+  if (confetti) {
+    for (const [x, y, c] of confetti)
+      if (g[y]?.[x] !== undefined) g[y][x] = c;
+  }
 
   // Ground shadow: wider on squash, smaller when airborne.
   let shHW = rx * (0.95 + (1 - s) * 2.5) - lift * 0.9;
@@ -337,12 +366,42 @@ export const BOING = [
 const BOING_REST = 5;
 export const BOING_LOOP = [...BOING, ...Array.from({ length: BOING_REST }, () => [1, 0, 0])];
 
+// Keepie-uppie: the jelly juggles a ball off its head. The ball flies its own
+// arc (ballY per tick, independent of the body squash) down column KICKUPS_X;
+// the jelly pulses up to "head" it at the loop seam — [ballY, squash, lift,
+// mouthOpen]. f10 reaches up as the ball falls, f0 is the header contact, then
+// it settles and the ball floats back to its apex. The seam closes on contact.
+export const KICKUPS_X = 11;
+export const KICKUPS = [
+  [5, 0.90, 2, 1], [4, 0.96, 1, 1], [3, 1.04, 0, 0], [3, 1.00, 0, 0],
+  [2, 1.00, 0, 0], [2, 1.00, 0, 0], [2, 1.00, 0, 0], [3, 1.00, 0, 0],
+  [3, 1.00, 0, 0], [4, 1.00, 0, 0], [4, 0.96, 1, 1],
+];
+
+// Spain's red + gold celebration confetti for the header pop — bursts on the
+// contact frame (f0) and spreads/fades over the next three, then nothing until
+// the next header. Fixed R/Y, deliberately NOT flavor-tinted: the confetti *is*
+// the Spain signal, so a green jelly must still throw red/gold. [x, y, key].
+export const KICKUPS_CONFETTI = [
+  [[8, 3, "Y"], [14, 3, "R"], [8, 5, "R"], [14, 5, "Y"], [10, 2, "R"], [12, 2, "Y"]],
+  [[7, 2, "Y"], [15, 2, "R"], [6, 4, "R"], [16, 4, "Y"], [9, 0, "R"], [13, 0, "Y"]],
+  [[5, 1, "Y"], [17, 1, "R"], [4, 3, "R"], [18, 3, "Y"], [8, 0, "R"], [14, 0, "Y"]],
+  [[3, 2, "Y"], [19, 2, "R"], [5, 0, "R"], [17, 0, "Y"]],
+];
+
 // Deterministic loop schedules per animation mode. Live-only flourishes
 // (random blinks) are omitted so the seam always closes cleanly.
 export const IDLE_FRAMES = 17;
 export const SLEEP_FRAMES = FPS * 4;
 
 export function modeGrids(mode, { face = "happy", accessory = "none" } = {}) {
+  if (mode === "kickups") {
+    return KICKUPS.map(([ballY, s, lift, mo], f) =>
+      renderGrid(s, lift, {
+        mouthOpen: !!mo, face, accessory,
+        ball: { x: KICKUPS_X, y: ballY }, confetti: KICKUPS_CONFETTI[f] ?? null,
+      }));
+  }
   if (mode === "sleep") {
     return Array.from({ length: SLEEP_FRAMES }, (_, frame) => {
       const progress = frame / SLEEP_FRAMES;
@@ -362,7 +421,7 @@ export function modeGrids(mode, { face = "happy", accessory = "none" } = {}) {
 
 // Slug codec. Tokens are order-insensitive and unknown tokens are ignored, so
 // links never break as parts are added — a bad link degrades to the default pet.
-export const MODES = ["idle", "boing", "sleep"];
+export const MODES = ["idle", "boing", "sleep", "kickups"];
 export const FACES = ["happy", "wink", "ooh", "grump", "love"];
 export const ACCESSORIES = [
   "bow", "sprout", "crown", "party",
